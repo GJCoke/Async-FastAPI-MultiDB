@@ -1,0 +1,126 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "FastAPI-MultiDB-Async"
+authors = [
+    {name = "Coke", email = "jock74608@gmail.com"}
+]
+description = "FastAPI-MultiDB-Async is an asynchronous FastAPI template project designed to seamlessly integrate both SQL (e.g., PostgreSQL, MySQL) and NoSQL (e.g., MongoDB) databases. This template offers a modern and efficient web framework solution supporting asynchronous request handling, making it ideal for building scalable API services."
+requires-python = ">= 3.12"
+version = "0.1.0"
+dependencies = [
+    # Server
+    "fastapi>=0.115.11,<1.0",
+    "uvicorn==0.34.0",
+    # Encryption Algorithm
+    "authlib==1.5.1",
+    "bcrypt==4.3.0",
+    "cryptography==43.0.3",
+    # Python Type
+    "pydantic-settings==2.8.1",
+    "pydantic[email]==2.10.6",
+    "sqlmodel==0.0.24",
+    # Socket
+    "python-socketio==5.12.1",
+    "websocket-client==1.8.0",
+    # Database
+    "redis==5.2.1",
+    "mysql-connector-python==9.2.0",
+    "asyncmy==0.2.10",
+    "alembic==1.15.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff==0.9.10",
+    "mypy==1.15.0",
+]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+indent-width = 4
+
+[tool.ruff.lint]
+select = [
+    "F",
+    "E",
+    "W",
+    "I001",
+]
+ignore = []
+per-file-ignores = {}
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# Directories or files that do not need to be checked.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".ipynb_checkpoints",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pyenv",
+    ".pytest_cache",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    ".vscode",
+    ".idea",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "venv",
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.mypy]
+plugins = [
+  "pydantic.mypy"
+]
+
+# Do not check imported modules, only check the current module.
+follow_imports = "silent"
+
+# Ignore missing type information when importing modules.
+ignore_missing_imports = true
+
+# Enable warnings for redundant type casting.
+warn_redundant_casts = true
+
+# Check for function definitions without type annotations.
+check_untyped_defs = true
+
+# Prevent implicit re-exporting.
+no_implicit_reexport = true
+
+# Do not allow the definition of functions without type annotations.
+disallow_untyped_defs = true
+
+
+[tool.pydantic-mypy]
+# Prevent the inclusion of extra fields during the initialization of the Pydantic model.
+init_forbid_extra = true
+
+# Ensure that the field types of the model are correctly type-checked during initialization.
+init_typed = true
+
+# Warning for the case of missing dynamic aliases.
+warn_required_dynamic_aliases = true
