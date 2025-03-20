@@ -32,6 +32,14 @@ Async-FastAPI-MultiDB 是一个异步 FastAPI 模板项目，旨在无缝集成 
     pip install ".[dev]"
     uvicorn --reload "src.main:app"
 ```
+5. 开发
+本项目使用 `pre-commit` 来确保代码在提交前的质量和一致性。它会在代码提交前自动运行检查工具和格式化工具。
+```bash
+    pre-commit install
+```
+`pre-commit` 的配置文件是 `.pre-commit-config.yaml`，其中包含以下钩子：
+代码格式化：使用 ruff 自动格式化代码。
+静态类型检查：使用 mypy 检查 Python 代码的类型注解。
 
 ## 使用方法
 1. 为 SQL 数据库（如 PostgreSQL）创建并应用迁移：

@@ -36,6 +36,7 @@ dependencies = [
 dev = [
     "ruff==0.9.10",
     "mypy==1.15.0",
+    "pre-commit==4.2.0"
 ]
 
 [tool.hatch.build.targets.wheel]
