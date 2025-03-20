@@ -1,9 +1,9 @@
 <div align="center">
-	<h1>FastAPI-MultiDB-Async</h1>
-  <span><a href="./README.md">中文</a> | English</span>
+	<h1>Async-FastAPI-MultiDB</h1>
+  <span>中文 | <a href="./README-EN.md">English</a></span>
 </div>
 
-FastAPI-MultiDB-Async 是一个异步 FastAPI 模板项目，旨在无缝集成 SQL (如 PostgreSQL, MySQL) 和 NoSQL (如 MongoDB) 数据库。该模板提供了一种现代化且高效的 Web 框架解决方案，支持异步请求处理，非常适合用于构建可扩展的 API 服务。
+Async-FastAPI-MultiDB 是一个异步 FastAPI 模板项目，旨在无缝集成 SQL (如 PostgreSQL, MySQL) 和 NoSQL (如 MongoDB) 数据库。该模板提供了一种现代化且高效的 Web 框架解决方案，支持异步请求处理，非常适合用于构建可扩展的 API 服务。
 
 ## 特点
 - **异步架构：** 全面支持 `async/await` 提高性能。
@@ -15,8 +15,8 @@ FastAPI-MultiDB-Async 是一个异步 FastAPI 模板项目，旨在无缝集成 
 ## 安装
 1. 克隆仓库：
 ```bash
-    git clone https://github.com/GJCoke/FastAPI-MultiDB-Async.git
-    cd FastAPI-MultiDB-Async
+    git clone https://github.com/GJCoke/Async-FastAPI-MultiDB.git
+    cd Async-FastAPI-MultiDB
 ```
 2. 复制环境变量信息：
 ```bash

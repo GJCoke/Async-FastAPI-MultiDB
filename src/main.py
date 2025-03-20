@@ -1,7 +1,8 @@
 """
 FastAPI entry point.
 
-Description.
+This is the main entry point for the FastAPI application. It sets up the middleware,
+routes, and exception handling for the application.
 
 Author : Coke
 Date   : 2025-03-10

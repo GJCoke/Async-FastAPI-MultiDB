@@ -94,5 +94,5 @@ if __name__ == "__main__":
 
 
     async def test():
-        test = await user.get_paginate(filters=User.id.decs())
+        test = await user.get(filters=User.id.decs())
         return test

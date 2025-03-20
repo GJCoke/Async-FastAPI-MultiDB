@@ -1,9 +1,9 @@
 <div align="center">
-	<h1>FastAPI-MultiDB-Async</h1>
-  <span>中文 | <a href="./README.md">English</a></span>
+	<h1>Async-FastAPI-MultiDB</h1>
+  <span><a href="./README.md">中文</a> | English</span>
 </div>
 
-FastAPI-MultiDB-Async is an asynchronous FastAPI template project designed to seamlessly integrate both SQL (e.g., PostgreSQL, MySQL) and NoSQL (e.g., MongoDB) databases. This template offers a modern and efficient web framework solution supporting asynchronous request handling, making it ideal for building scalable API services.
+Async-FastAPI-MultiDB is an asynchronous FastAPI template project designed to seamlessly integrate both SQL (e.g., PostgreSQL, MySQL) and NoSQL (e.g., MongoDB) databases. This template offers a modern and efficient web framework solution supporting asynchronous request handling, making it ideal for building scalable API services.
 
 ## Features
 - **Asynchronous Architecture:** Full support for `async/await`, enhancing performance.
@@ -15,7 +15,8 @@ FastAPI-MultiDB-Async is an asynchronous FastAPI template project designed to se
 ## Installation
 1. Clone the repository:
 ```bash
-    git clone https://github.com/yourusername/FastAPI-Fusion.git
+    git clone https://github.com/GJCoke/Async-FastAPI-MultiDB.git
+    cd Async-FastAPI-MultiDB
 ```
 2. Install dependencies:
 ```bash

@@ -1,7 +1,8 @@
 """
-environment file.
+Environment enum constant.
 
-Description.
+Defines the possible environments for the application and includes helper properties
+to determine the environment's specific characteristics.
 
 Author : Coke
 Date   : 2025-03-11
@@ -26,12 +27,15 @@ class Environment(str, Enum):
 
     @property
     def is_debug(self) -> bool:
+        """Returns True if the environment is LOCAL, STAGING, or TESTING."""
         return self in (self.LOCAL, self.STAGING, self.TESTING)
 
     @property
     def is_testing(self) -> bool:
+        """Returns True if the environment is TESTING."""
         return self == self.TESTING
 
     @property
     def is_deployed(self) -> bool:
+        """Returns True if the environment is STAGING or PRODUCTION."""
         return self in (self.STAGING, self.PRODUCTION)

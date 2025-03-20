@@ -18,10 +18,11 @@ T = TypeVar("T")
 
 
 class BaseResponse(BaseModel):
-    """base response."""
+    """Base response."""
 
     def serializable_dict(self) -> dict:
-        """Convert the object into a JSON-serializable format and use aliases.
+        """
+        Convert the object into a JSON-serializable format and use aliases.
 
         Examples:
             class MyModel(BaseModel):
@@ -40,7 +41,8 @@ class BaseResponse(BaseModel):
 
 
 class Response(BaseResponse, Generic[T]):
-    """Unified response.
+    """
+    Unified response.
 
     Examples:
         @router.get("/user")
@@ -59,7 +61,8 @@ class Response(BaseResponse, Generic[T]):
 
 
 class PaginatedResponse(BaseResponse, Generic[T]):
-    """Unified paginated response.
+    """
+    Unified paginated response.
 
     Examples:
         @router.get("/user")
@@ -86,7 +89,7 @@ class PaginatedResponse(BaseResponse, Generic[T]):
 
 
 class AuthenticationError(Response):
-    """authentication error response."""
+    """Authentication error response."""
 
     code: int = status.HTTP_401_UNAUTHORIZED
     message: str = "Invalid credentials."
