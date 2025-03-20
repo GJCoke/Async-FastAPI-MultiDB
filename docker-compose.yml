@@ -1,7 +1,7 @@
 services:
-  fastapi_multi_async:
-    container_name: fastapi_multi_async
-    image: fastapi_multi_async_image
+  async_fastapi_multi:
+    container_name: async_fastapi_multi
+    image: async_fastapi_multi_image
     env_file:
       - .env
 
@@ -15,19 +15,19 @@ services:
     ports:
       - "16000:8006"
 
-    depends_on:  # Make sure that fastapi_multi_async_mysql starts first by depending on it.
-      - fastapi_multi_async_mysql
+    depends_on:  # Make sure that async_fastapi_multi_mysql starts first by depending on it.
+      - async_fastapi_multi_mysql
 
-  fastapi_multi_async_mysql:  # mysql server
-    container_name: fastapi_multi_async_mysql
-    hostname: fastapi_multi_async_mysql
+  async_fastapi_multi_mysql:  # mysql server
+    container_name: async_fastapi_multi_mysql
+    hostname: async_fastapi_multi_mysql
     image: mysql:9.0
     env_file:
       - .env
 
     volumes:
-      - fastapi_multi_async_mysql_data:/var/lib/mysql
-      - fastapi_multi_async_mysql_data_backups:/backups
+      - async_fastapi_multi_mysql_data:/var/lib/mysql
+      - async_fastapi_multi_mysql_data_backups:/backups
       # - ./scripts/mysql:/scripts
 
     command:
@@ -37,16 +37,16 @@ services:
     ports:
       - "33306:3306"
 
-  fastapi_multi_async_redis:  # redis config.
+  async_fastapi_multi_redis:  # redis config.
     image: redis:6.2-alpine
     hostname: redis
-    container_name: fastapi_multi_async_redis
+    container_name: async_fastapi_multi_redis
 
     env_file:
       - .env
 
     volumes:
-      - fastapi_multi_async_redis_data:/var/lib/redis
+      - async_fastapi_multi_redis_data:/var/lib/redis
 
     command:
       - 'redis-server'  # start redis server.
@@ -56,16 +56,16 @@ services:
       - "36379:6379"  # Map the host's port 36379 to the container's port 6379.
 
 volumes:  # data persistence.
-  fastapi_multi_async_mysql_data:
+  async_fastapi_multi_mysql_data:
     driver: "local"
 
-  fastapi_multi_async_mysql_data_backups:
+  async_fastapi_multi_mysql_data_backups:
     driver: "local"
 
-  fastapi_multi_async_redis_data:
+  async_fastapi_multi_redis_data:
     driver: "local"
 
 networks:
   default:
     external: true
-    name: fastapi_multi_async_network  # network name.
+    name: async_fastapi_multi_network  # network name.

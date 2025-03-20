@@ -39,7 +39,7 @@ class Config(BaseSettings):
     CORS_ORIGINS_REGEX: str | None = None
     CORS_HEADERS: list[str]
 
-    API_PREFIX_V1 = "/api/v1"
+    API_PREFIX_V1: str = "/api/v1"
 
     # App version
     APP_VERSION: str = "0.1.0"

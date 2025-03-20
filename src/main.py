@@ -9,8 +9,10 @@ Date   : 2025-03-10
 """
 
 import logging
+import time
+from typing import Awaitable, Callable
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -35,6 +37,28 @@ app.add_middleware(
 )
 
 app.include_router(v1_router)
+
+
+@app.middleware("http")
+async def http_middleware(request: Request, callback: Callable[[Request], Awaitable[Response]]) -> Response:
+    """
+    Middleware function that measures the time taken to process a request
+    and logs the request method, URL path, response status, and duration.
+
+    Args:
+        request (Request): The incoming HTTP request.
+        callback (Callable[[Request], Awaitable[Response]]): The callback func to process the request and response.
+
+    Returns:
+        Response: The HTTP response returned to the client after processing.
+    """
+    before = time.time()
+    response = await callback(request)
+
+    duration = round((time.time() - before) * 1000)
+    logger.info(f"{request.method} {request.url.path} {response.status_code} {duration}ms")
+
+    return response
 
 
 @app.exception_handler(Exception)
