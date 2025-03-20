@@ -89,9 +89,7 @@ if __name__ == "__main__":
         id: int
         name: str
 
-
     user = BaseCRUD[User](User)
-
 
     async def test():
         test = await user.get(filters=User.id.decs())
