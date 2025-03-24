@@ -1,8 +1,6 @@
 """
 Response model schemas.
 
-Description.
-
 Author : Coke
 Date   : 2025-03-12
 """
@@ -11,33 +9,19 @@ import time
 from typing import Any, Generic, TypeVar
 
 from fastapi import status
-from fastapi.encoders import jsonable_encoder
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from .base import BaseModel
 
 T = TypeVar("T")
 
 
 class BaseResponse(BaseModel):
-    """Base response."""
+    """Base response model."""
 
-    def serializable_dict(self) -> dict:
-        """
-        Convert the object into a JSON-serializable format and use aliases.
-
-        Examples:
-            class MyModel(BaseModel):
-                page_size: int = Field(..., alias="pageSize")
-
-            model = MyModel()
-            model.serializable_dict()
-            >> {pageSize: 1}
-
-        Returns:
-            JSON-serializable format
-        """
-        default_dict = self.model_dump(by_alias=True)
-
-        return jsonable_encoder(default_dict)
+    model_config = BaseModel.model_config.update(
+        from_attributes=True,  # Enable ORM mode.
+    )
 
 
 class Response(BaseResponse, Generic[T]):
@@ -71,7 +55,7 @@ class PaginatedResponse(BaseResponse, Generic[T]):
 
         {
           "code": 200,
-          "message": "API Request Successful.",
+          "message": "Successful.",
           "ts": 1741789270,
           "data": {
             "page": 1,
@@ -83,17 +67,9 @@ class PaginatedResponse(BaseResponse, Generic[T]):
     """
 
     page: int = Field(1, description="page number.")
-    page_size: int = Field(20, description="number of items per page.", alias="pageSize")
+    page_size: int = Field(20, description="number of items per page.")
     total: int = Field(100, description="total number of items.")
     records: list[T] = Field([], description="records.")
-
-
-class AuthenticationError(Response):
-    """Authentication error response."""
-
-    code: int = status.HTTP_401_UNAUTHORIZED
-    message: str = "Invalid credentials."
-    data: None = None
 
 
 class BadRequestResponse(Response):
@@ -101,6 +77,14 @@ class BadRequestResponse(Response):
 
     code: int = status.HTTP_400_BAD_REQUEST
     message: str = "Bad Request."
+    data: None = None
+
+
+class AuthenticationError(Response):
+    """Authentication error response."""
+
+    code: int = status.HTTP_401_UNAUTHORIZED
+    message: str = "Invalid credentials."
     data: None = None
 
 

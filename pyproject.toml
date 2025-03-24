@@ -3,11 +3,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "FastAPI-MultiDB-Async"
+name = "Async-FastAPI-MultiDB"
 authors = [
     {name = "Coke", email = "jock74608@gmail.com"}
 ]
-description = "FastAPI-MultiDB-Async is an asynchronous FastAPI template project designed to seamlessly integrate both SQL (e.g., PostgreSQL, MySQL) and NoSQL (e.g., MongoDB) databases. This template offers a modern and efficient web framework solution supporting asynchronous request handling, making it ideal for building scalable API services."
+description = "Async-FastAPI-MultiDB is an asynchronous FastAPI template project designed to seamlessly integrate both SQL (e.g., PostgreSQL, MySQL) and NoSQL (e.g., MongoDB) databases. This template offers a modern and efficient web framework solution supporting asynchronous request handling, making it ideal for building scalable API services."
 requires-python = ">= 3.12"
 version = "0.1.0"
 dependencies = [

@@ -38,8 +38,7 @@ Async-FastAPI-MultiDB 是一个异步 FastAPI 模板项目，旨在无缝集成 
     pre-commit install
 ```
 `pre-commit` 的配置文件是 `.pre-commit-config.yaml`，其中包含以下钩子：
-代码格式化：使用 ruff 自动格式化代码。
-静态类型检查：使用 mypy 检查 Python 代码的类型注解。
+ - 代码格式化：使用 ruff 自动格式化代码。
 
 ## 使用方法
 1. 为 SQL 数据库（如 PostgreSQL）创建并应用迁移：
@@ -55,6 +54,8 @@ Async-FastAPI-MultiDB 是一个异步 FastAPI 模板项目，旨在无缝集成 
     http://127.0.0.1:8000/docs
 ```
 
+## Git 相关规范
+<span><a href="./docs/GIT.md">Git 规范</a></span>
+
 ## 许可证
 本项目基于 Apache-2.0 许可证，详见 [LICENSE](LICENSE) 文件。
-

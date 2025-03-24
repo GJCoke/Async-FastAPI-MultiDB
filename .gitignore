@@ -181,3 +181,6 @@ backup.dump.gz
 
 # debug file
 debug*.py
+
+# log
+logs/

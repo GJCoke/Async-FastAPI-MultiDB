@@ -8,7 +8,7 @@ Author : Coke
 Date   : 2025-03-17
 """
 
-from typing import Annotated
+from typing import Annotated, AsyncGenerator
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -16,7 +16,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.config import settings
 
-DATABASE_URL = str(settings.DATABASE_URL)
+DATABASE_URL = str(settings.MYSQL_URL)
 
 # Create an asynchronous SQLAlchemy engine for MySQL connection.
 # The 'echo' parameter is set based on the environment debug flag,
@@ -30,7 +30,7 @@ AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_co
 
 # Dependency function that yields a database session to be used in FastAPI route handlers.
 # The 'AsyncSessionLocal' session maker is used to create a session for each request.
-async def get_db():
+async def get_db() -> AsyncGenerator[AsyncSession]:
     async with AsyncSessionLocal() as session:
         yield session
 

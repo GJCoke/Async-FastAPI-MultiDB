@@ -41,9 +41,9 @@ class BaseCRUD(Generic[SQLModel]):
         Raises:
             If nullable is False and the record is not found in the database.
         """
-
-        statement = select(self.model).where(self.model.id == _id)
-        response = await session.exec(statement)
+        if hasattr(self.model, "id"):
+            statement = select(self.model).where(self.model.id == _id)
+            response = await session.exec(statement)
 
         if not nullable and not response:
             raise NotFoundException()
