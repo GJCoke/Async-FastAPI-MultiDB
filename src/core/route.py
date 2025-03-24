@@ -8,6 +8,7 @@ Date   : 2025-03-12
 """
 
 import logging
+from typing import Any
 
 from fastapi.routing import APIRoute
 
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 class BaseRoute(APIRoute):
     """Custom route class."""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """
         Set multiple values for the responses status code.
 
@@ -28,9 +29,9 @@ class BaseRoute(APIRoute):
 
         Similar:
             @app.post("/login", responses={
-            400: {"description": "Bad request.", "model": BadRequestResponse},
-            422: {"description": "Validation error.", "model": ValidationErrorResponse},
-            })
+                400: {"description": "Bad request.", "model": BadRequestResponse},
+                422: {"description": "Validation error.", "model": ValidationErrorResponse},
+                })
             async def login():
                 pass
         """
