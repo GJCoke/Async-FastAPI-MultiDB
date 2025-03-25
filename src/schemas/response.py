@@ -9,7 +9,7 @@ import time
 from typing import Any, Generic, TypeVar
 
 from fastapi import status
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from .base import BaseModel
 
@@ -19,9 +19,7 @@ T = TypeVar("T")
 class BaseResponse(BaseModel):
     """Base response model."""
 
-    model_config = BaseModel.model_config.update(
-        from_attributes=True,  # Enable ORM mode.
-    )
+    model_config = ConfigDict(**(BaseModel.model_config or {}), from_attributes=True)
 
 
 class Response(BaseResponse, Generic[T]):
@@ -66,9 +64,9 @@ class PaginatedResponse(BaseResponse, Generic[T]):
         }
     """
 
-    page: int = Field(1, description="page number.")
-    page_size: int = Field(20, description="number of items per page.")
-    total: int = Field(100, description="total number of items.")
+    page: int = Field(..., description="page number.")
+    page_size: int = Field(..., description="number of items per page.")
+    total: int = Field(..., description="total number of items.")
     records: list[T] = Field([], description="records.")
 
 

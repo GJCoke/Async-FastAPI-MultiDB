@@ -62,3 +62,17 @@ class NotFoundException(BaseHTTPException):
             detail (str): The error message (default "not found.").
         """
         super().__init__(status_code=status_code, detail=detail)
+
+
+class ExistsException(BaseHTTPException):
+    """Exception for resource already exists (409 error)."""
+
+    def __init__(self, *, status_code: int = status.HTTP_409_CONFLICT, detail: str = "resource already exists."):
+        """
+        Initializes the ExistsException.
+
+        Args:
+            status_code (int): The HTTP status code for resource already exists error (default 409).
+            detail (str): The error message (default "resource already exists.").
+        """
+        super().__init__(status_code=status_code, detail=detail)

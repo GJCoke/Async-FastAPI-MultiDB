@@ -74,7 +74,7 @@ async def handle_server_errors(_: Request, exc: Exception) -> JSONResponse:
 
 
 @app.exception_handler(RequestValidationError)
-async def handle_validation_errors(_: Request, exc: RequestValidationError) -> JSONResponse:
+async def handle_request_validation_errors(_: Request, exc: RequestValidationError) -> JSONResponse:
     """Capture parameter exception errors and process their structure."""
 
     errors = [

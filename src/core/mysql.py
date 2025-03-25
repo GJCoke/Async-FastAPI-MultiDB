@@ -30,7 +30,7 @@ AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_co
 
 # Dependency function that yields a database session to be used in FastAPI route handlers.
 # The 'AsyncSessionLocal' session maker is used to create a session for each request.
-async def get_db() -> AsyncGenerator[AsyncSession]:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
 

@@ -3,6 +3,9 @@ set -x
 
 TARGET_DIR=${1:-src}
 
-# 格式化代码
+# ruff format
 ruff check --fix "$TARGET_DIR"
 ruff format "$TARGET_DIR"
+
+# mypy static type check
+mypy "$TARGET_DIR"
