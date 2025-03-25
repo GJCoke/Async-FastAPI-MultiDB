@@ -21,12 +21,12 @@ from src.schemas.base import BaseModel
 from src.schemas.response import PaginatedResponse
 
 SQLModel = TypeVar("SQLModel", bound=_SQLModel)
-CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
-UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
+CreateSchema = TypeVar("CreateSchema", bound=BaseModel)
+UpdateSchema = TypeVar("UpdateSchema", bound=BaseModel)
 T = TypeVar("T", bound=_SQLModel)
 
 
-class BaseCRUD(Generic[SQLModel, CreateSchemaType, UpdateSchemaType]):
+class BaseCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
     def __init__(self, model: type[SQLModel]) -> None:
         """
         Initialize the BaseCRUD with a SQLModel.
@@ -197,7 +197,7 @@ class BaseCRUD(Generic[SQLModel, CreateSchemaType, UpdateSchemaType]):
     async def create(
         self,
         session: AsyncSession,
-        create_in: UpdateSchemaType | SQLModel | dict[str, Any],
+        create_in: CreateSchema | SQLModel | dict[str, Any],
         /,
         *,
         validate: bool = True,
@@ -219,23 +219,29 @@ class BaseCRUD(Generic[SQLModel, CreateSchemaType, UpdateSchemaType]):
             ValidationError: If validation fails and validate=True.
         """
 
-        if validate:
+        if not validate:
+            if not isinstance(create_in, self.model):
+                raise ValueError(f"Expected type {type(self.model)} for 'create_in', but got {type(create_in)}.")
+        else:
             create_in = self.model.model_validate(create_in)
+
         try:
             session.add(create_in)
+            await session.flush()
+
             await session.commit()
+            await session.refresh(create_in)
         except IntegrityError:
             await session.rollback()
             raise ExistsException()
 
-        await session.refresh(create_in)
         return create_in
 
     async def update(
         self,
         session: AsyncSession,
         current_model: SQLModel,
-        update_in: UpdateSchemaType | SQLModel | dict[str, Any],
+        update_in: UpdateSchema | SQLModel | dict[str, Any],
     ) -> SQLModel:
         """
         Update an existing model instance with new data.
@@ -267,7 +273,7 @@ class BaseCRUD(Generic[SQLModel, CreateSchemaType, UpdateSchemaType]):
         self,
         session: AsyncSession,
         _id: UUID,
-        update_in: UpdateSchemaType | dict[str, Any],
+        update_in: UpdateSchema | dict[str, Any],
         /,
     ) -> SQLModel:
         """
@@ -276,7 +282,7 @@ class BaseCRUD(Generic[SQLModel, CreateSchemaType, UpdateSchemaType]):
         Args:
             session (AsyncSession): SQLAlchemy async session.
             _id (UUID): Primary key of the record to update.
-            update_in (UpdateSchemaType | dict[str, Any]): Update data.
+            update_in (UpdateSchema | dict[str, Any]): Update data.
 
         Returns:
             SQLModel: The updated model instance.
