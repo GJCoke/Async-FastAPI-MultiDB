@@ -91,8 +91,8 @@ async def handle_server_errors(request: Request, exc: Exception) -> JSONResponse
         request.method,
         request.url.path,
         status.HTTP_500_INTERNAL_SERVER_ERROR,
-        str(exc)
-        )
+        str(exc),
+    )
 
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

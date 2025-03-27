@@ -15,9 +15,7 @@ from fastapi import APIRouter
 from src.core.mysql import SessionDep
 from src.core.route import BaseRoute
 from src.models.test import testCrud
-from src.schemas.auth import AuthRequest
 from src.schemas.response import Response
-from src.core.exceptions import PermissionDeniedException
 
 router = APIRouter(tags=["auth"], route_class=BaseRoute)
 
