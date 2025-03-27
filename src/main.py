@@ -16,16 +16,18 @@ from fastapi import FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.datastructures import Address
 from starlette.exceptions import HTTPException
 
 from src.api.v1 import v1_router
 from src.core.config import app_configs, settings
+from src.core.lifecycle import lifespan
 from src.schemas.response import Response as SchemaResponse
 from src.schemas.response import ServerErrorResponse, ValidationErrorResponse
 
 logger = logging.getLogger("app")
 
-app = FastAPI(**app_configs)
+app = FastAPI(**app_configs, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,  # type: ignore
@@ -37,6 +39,17 @@ app.add_middleware(
 )
 
 app.include_router(v1_router)
+
+
+def get_client_addr(client: Address | None) -> str:
+    """
+    Get the client address.
+    Args:
+        client(Address | None): Starlette client address.
+    """
+    if not client:
+        return ""
+    return "%s:%d" % client
 
 
 @app.middleware("http")
@@ -56,16 +69,30 @@ async def http_middleware(request: Request, callback: Callable[[Request], Awaita
     response = await callback(request)
 
     duration = round((time.time() - before) * 1000)
-    logger.info(f"{request.method} {request.url.path} {response.status_code} {duration}ms")
+    logger.info(
+        '%s - "%s %s HTTP/%s" %d %dms',
+        get_client_addr(request.client),
+        request.method,
+        request.url.path,
+        request.scope.get("http_version"),
+        response.status_code,
+        duration,
+    )
 
     return response
 
 
 @app.exception_handler(Exception)
-async def handle_server_errors(_: Request, exc: Exception) -> JSONResponse:
+async def handle_server_errors(request: Request, exc: Exception) -> JSONResponse:
     """Capture all non-deliberate exceptions and respond with a 500 status code."""
 
-    logger.exception(exc)
+    logger.error(
+        '"%s %s" %d ServerException: %s',
+        request.method,
+        request.url.path,
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+        str(exc)
+        )
 
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -74,14 +101,19 @@ async def handle_server_errors(_: Request, exc: Exception) -> JSONResponse:
 
 
 @app.exception_handler(RequestValidationError)
-async def handle_request_validation_errors(_: Request, exc: RequestValidationError) -> JSONResponse:
+async def handle_request_validation_errors(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Capture parameter exception errors and process their structure."""
 
     errors = [
-        f"{item.get('loc', [..., 'unknown'])[1]} {str(item.get('msg', 'error.')).lower()}" for item in exc.errors()
+        f"{item.get('loc', [..., 'unknown'])[-1]} {str(item.get('msg', 'error.')).lower()}" for item in exc.errors()
     ]
     details = "; ".join(errors)
-    logger.debug(f"validation errors: {details}")
+    logger.warning(
+        '"%s %s" request validation error: %s',
+        request.method,
+        request.url.path,
+        details,
+    )
 
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -90,8 +122,16 @@ async def handle_request_validation_errors(_: Request, exc: RequestValidationErr
 
 
 @app.exception_handler(HTTPException)
-async def handle_http_exception(_: Request, exc: HTTPException) -> JSONResponse:
+async def handle_http_exception(request: Request, exc: HTTPException) -> JSONResponse:
     """Custom handler for HTTP exceptions."""
+
+    logger.error(
+        '"%s %s" %d HTTPException: %s',
+        request.method,
+        request.url.path,
+        exc.status_code,
+        exc.detail,
+    )
 
     return JSONResponse(
         status_code=exc.status_code,

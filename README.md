@@ -7,52 +7,56 @@ Async-FastAPI-MultiDB 是一个异步 FastAPI 模板项目，旨在无缝集成 
 
 ## 特点
 - **异步架构：** 全面支持 `async/await` 提高性能。
-- **SQL & NoSQL 集成：** 支持 SQLAlchemy 和 Motor 用于数据库操作。
-- **模块化设计：** 清晰且易于维护的代码结构，便于扩展。
+- **SQL & NoSQL 集成：** 支持 SQLModel/SQLAlchemy（MySQL 和 PostgreSQL等关系型数据库）以及 Beanie（基于 MongoDB 的 ODM），可同时使用关系型数据库和文档数据库，满足多种数据存储需求。
+- **模块化设计：** 采用清晰的项目结构，将路由、模型、服务层、数据库操作等功能解耦，便于维护和扩展，可适应大型项目开发。
 - **自动文档生成：** 利用 FastAPI 内置功能自动生成 API 文档。
 - **基于环境的配置管理：** 简化不同环境下的配置切换。
 
 ## 安装
 1. 克隆仓库：
-```bash
+    ```bash
     git clone https://github.com/GJCoke/Async-FastAPI-MultiDB.git
     cd Async-FastAPI-MultiDB
-```
+    ```
 2. 复制环境变量信息：
-```bash
+    ```bash
     cp .env.example .env
-```
+    ```
 3. 使用Docker
-```bash
+    ```bash
     docker network create async_fastapi_multi_network
     docker compose up -d --build
-```
+    ```
+   访问 `http://localhost:16000/docs` 即可查看 Swagger 文档
+
 4. 本地运行(安装依赖)
-```bash
+    ```bash
     pip install ".[dev]"
     uvicorn --reload "src.main:app"
-```
+    ```
+   访问 `http://localhost:8000/docs` 即可查看 Swagger 文档
 5. 开发
-本项目使用 `pre-commit` 来确保代码在提交前的质量和一致性。它会在代码提交前自动运行检查工具和格式化工具。
-```bash
+
+    本项目使用 `pre-commit` 来确保代码在提交前的质量和一致性。它会在代码提交前自动运行检查工具和格式化工具。
+    ```bash
     pre-commit install
-```
-`pre-commit` 的配置文件是 `.pre-commit-config.yaml`，其中包含以下钩子：
- - 代码格式化：使用 ruff 自动格式化代码。
+    ```
+    `pre-commit` 的配置文件是 `.pre-commit-config.yaml`，其中包含以下钩子：
+    - 代码格式化：使用 ruff 自动格式化代码。
 
 ## 使用方法
 1. 为 SQL 数据库（如 PostgreSQL）创建并应用迁移：
-```bash
+    ```bash
     alembic upgrade head
-```
+    ```
 2. 运行服务器：
-```bash
+    ```bash
     uvicorn main:app --reload
-```
+    ```
 3. 访问自动生成的文档：
-```
+    ```
     http://127.0.0.1:8000/docs
-```
+    ```
 
 ## Git 相关规范
 <span><a href="./docs/GIT.md">Git 规范</a></span>
