@@ -28,7 +28,15 @@ class Config(BaseSettings):
     MYSQL_HOST: str
     MYSQL_PORT: int = 3306  # Default MySQL port
     MYSQL_DATABASE: str
-    REDIS_URL: RedisDsn
+
+    # Redis configuration settings
+    REDIS_SCHEME: str = "redis"
+    REDIS_MAX_CONNECTIONS: int = 10
+    REDIS_ROOT_USERNAME: str
+    REDIS_ROOT_PASSWORD: str
+    REDIS_HOST: str
+    REDIS_PORT: int = 6379
+    REDIS_DATABASE: int | None = None
     MONGO_URL: MongoDsn
 
     # Current environment (e.g., TESTING, production)
@@ -47,15 +55,56 @@ class Config(BaseSettings):
     # Logging level
     LOG_LEVEL: str = "INFO"
 
+    @staticmethod
+    def format_url(scheme: str, username: str, password: str, host: str, port: int, database: str) -> str:
+        """
+        Format database url.
+
+        Args:
+            scheme (str): database scheme.
+            username (str): database username.
+            password (str): database password.
+            host (str): database host.
+            port (int): database port.
+            database (str): database name.
+
+        Returns:
+            str: DSN
+        """
+        return "{scheme}://{username}:{password}@{host}:{port}{database}".format(
+            scheme=scheme,
+            username=username,
+            password=password,
+            host=host,
+            port=port,
+            database=database,
+        )
+
     @property
     def MYSQL_URL(self) -> MySQLDsn:
         """Generate and return the MySQL connection URL."""
-        url = (
-            f"{self.MYSQL_SCHEME}://{self.MYSQL_ROOT_USERNAME}:{self.MYSQL_ROOT_PASSWORD}"
-            f"@{self.MYSQL_HOST}:{self.MYSQL_PORT}/{self.MYSQL_DATABASE}"
+        url = self.format_url(
+            scheme=self.MYSQL_SCHEME,
+            username=self.MYSQL_ROOT_USERNAME,
+            password=self.MYSQL_ROOT_PASSWORD,
+            host=self.MYSQL_HOST,
+            port=self.MYSQL_PORT,
+            database=f"/{self.MYSQL_DATABASE}",
         )
-
         return MySQLDsn(url=url)
+
+    @property
+    def REDIS_URL(self) -> RedisDsn:
+        """Generate and return the MySQL connection URL."""
+        url = self.format_url(
+            scheme=self.REDIS_SCHEME,
+            username=self.REDIS_ROOT_USERNAME,
+            password=self.REDIS_ROOT_PASSWORD,
+            host=self.REDIS_HOST,
+            port=self.REDIS_PORT,
+            database=f"/{self.REDIS_DATABASE}" if self.REDIS_DATABASE else "",
+        )
+        return RedisDsn(url=url)
 
 
 settings = Config()
