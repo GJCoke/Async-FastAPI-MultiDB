@@ -109,7 +109,7 @@ async def handle_request_validation_errors(request: Request, exc: RequestValidat
     ]
     details = "; ".join(errors)
     logger.warning(
-        '"%s %s" request validation error: %s',
+        '"%s %s" RequestValidationError: %s',
         request.method,
         request.url.path,
         details,
