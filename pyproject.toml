@@ -30,6 +30,7 @@ dependencies = [
     "mysql-connector-python==9.2.0",
     "asyncmy==0.2.10",
     "alembic==1.15.1",
+    "beanie==1.29.0"
 ]
 
 [project.optional-dependencies]

@@ -9,6 +9,8 @@ from datetime import datetime
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+from beanie import Document as _Document
+from beanie import Save, before_event
 from pydantic import field_serializer
 from sqlmodel import Field
 from sqlmodel import SQLModel as _SQLModel
@@ -32,7 +34,7 @@ def convert_datetime_to_gmt(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
-class SQLModel(_SQLModel, BaseModel):
+class SQLModel(_SQLModel, BaseModel):  # type: ignore
     """
     Base SQLModel class that combines Pydantic and SQLAlchemy functionality.
 
@@ -40,10 +42,7 @@ class SQLModel(_SQLModel, BaseModel):
     Provides common fields and serialization for database models.
     """
 
-    model_config = {**(BaseModel.model_config or {}), **(_SQLModel.model_config or {})}  # type: ignore
-
     id: UUID = Field(
-        ...,
         default_factory=uuid7,
         primary_key=True,
         index=True,
@@ -61,7 +60,58 @@ class SQLModel(_SQLModel, BaseModel):
 
     @field_serializer("create_time", "update_time")
     def serialize_datetime(self, value: datetime) -> str:
-        """Pydantic serializer for datetime fields.
+        """
+        Pydantic serializer for datetime fields.
+
+        Converts datetime fields to GMT string format when serializing to JSON.
+
+        Args:
+            value: datetime value to serialize
+
+        Returns:
+            String representation of datetime in GMT
+        """
+        return convert_datetime_to_gmt(value)
+
+
+class Document(_Document, BaseModel):
+    """
+    Base Document class that combines Pydantic and Beanie functionality.
+
+    Inherits from both BaseModel (custom Pydantic model) and Document (Beanie model).
+    Provides common fields and serialization for database models.
+    """
+
+    # TODO: find _id to id method.
+    # id: PydanticObjectId = Field(
+    #     alias="_id",
+    #     nullable=False,
+    #     primary_key=True,
+    # )
+
+    create_time: datetime = Field(
+        default_factory=datetime.now,
+        schema_extra={"examples": ["2024-07-31 16:07:34"]},
+    )
+    update_time: datetime = Field(
+        default_factory=datetime.now,
+        schema_extra={"examples": ["2024-07-31 16:07:34"]},
+    )
+
+    @before_event(Save)
+    def set_update_time(self) -> None:
+        """
+        Sets the update_time field to the current timestamp before saving the document.
+
+        This method is triggered before the document is saved to the database,
+        ensuring that the update_time field reflects the last modification time.
+        """
+        self.update_time = datetime.now()
+
+    @field_serializer("create_time", "update_time")
+    def serialize_datetime(self, value: datetime) -> str:
+        """
+        Pydantic serializer for datetime fields.
 
         Converts datetime fields to GMT string format when serializing to JSON.
 

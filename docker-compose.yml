@@ -1,7 +1,7 @@
 services:
-  async_fastapi_multi:
-    container_name: async_fastapi_multi
-    image: async_fastapi_multi_image
+  app:
+    container_name: app
+    image: app_image
     env_file:
       - .env
 
@@ -15,19 +15,19 @@ services:
     ports:
       - "16000:8006"
 
-    depends_on:  # Make sure that async_fastapi_multi_mysql starts first by depending on it.
-      - async_fastapi_multi_mysql
+    depends_on:  # Make sure that app_mysql starts first by depending on it.
+      - app_mysql
 
-  async_fastapi_multi_mysql:  # mysql server
-    container_name: async_fastapi_multi_mysql
-    hostname: async_fastapi_multi_mysql
+  app_mysql:  # mysql server
+    container_name: app_mysql
+    hostname: app_mysql
     image: mysql:9.0
     env_file:
       - .env
 
     volumes:
-      - async_fastapi_multi_mysql_data:/var/lib/mysql
-      - async_fastapi_multi_mysql_data_backups:/backups
+      - app_mysql_data:/var/lib/mysql
+      - app_mysql_data_backups:/backups
       # - ./scripts/mysql:/scripts
 
     command:
@@ -37,16 +37,31 @@ services:
     ports:
       - "33306:3306"
 
-  async_fastapi_multi_redis:  # redis config.
+  app_mongo:  # mongodb server
+    container_name: app_mongo
+    hostname: app_mongo
+    image: mongo:latest
+    env_file:
+      - .env
+
+    volumes:
+      - app_mongo_data:/var/lib/mongo
+
+    command: mongod --auth
+
+    ports:
+      - "27018:27017"
+
+  app_redis:  # redis config.
     image: redis:6.2-alpine
-    hostname: redis
-    container_name: async_fastapi_multi_redis
+    hostname: app_redis
+    container_name: app_redis
 
     env_file:
       - .env
 
     volumes:
-      - async_fastapi_multi_redis_data:/var/lib/redis
+      - app_redis_data:/var/lib/redis
 
     command:
       - 'redis-server'  # start redis server.
@@ -56,16 +71,19 @@ services:
       - "36379:6379"  # Map the host's port 36379 to the container's port 6379.
 
 volumes:  # data persistence.
-  async_fastapi_multi_mysql_data:
+  app_mysql_data:
     driver: "local"
 
-  async_fastapi_multi_mysql_data_backups:
+  app_mysql_data_backups:
     driver: "local"
 
-  async_fastapi_multi_redis_data:
+  app_mongo_data:
+    driver: "local"
+
+  app_redis_data:
     driver: "local"
 
 networks:
   default:
     external: true
-    name: async_fastapi_multi_network  # network name.
+    name: app_network  # network name.

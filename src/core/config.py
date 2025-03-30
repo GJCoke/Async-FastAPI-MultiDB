@@ -9,7 +9,7 @@ Date   : 2025-03-11
 
 from typing import Any
 
-from pydantic import MongoDsn, MySQLDsn, RedisDsn
+from pydantic import MongoDsn, MySQLDsn, RedisDsn, Secret
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.core.environment import Environment
@@ -24,7 +24,7 @@ class Config(BaseSettings):
     # MySQL configuration settings
     MYSQL_SCHEME: str
     MYSQL_ROOT_USERNAME: str
-    MYSQL_ROOT_PASSWORD: str
+    MYSQL_ROOT_PASSWORD: Secret[str]
     MYSQL_HOST: str
     MYSQL_PORT: int = 3306  # Default MySQL port
     MYSQL_DATABASE: str
@@ -33,13 +33,20 @@ class Config(BaseSettings):
     REDIS_SCHEME: str = "redis"
     REDIS_MAX_CONNECTIONS: int = 10
     REDIS_ROOT_USERNAME: str
-    REDIS_ROOT_PASSWORD: str
+    REDIS_ROOT_PASSWORD: Secret[str]
     REDIS_HOST: str
     REDIS_PORT: int = 6379
     REDIS_DATABASE: int | None = None
-    MONGO_URL: MongoDsn
 
-    # Current environment (e.g., TESTING, production)
+    # MongoDB configuration settings
+    MONGO_SCHEME: str
+    MONGO_INITDB_ROOT_USERNAME: str
+    MONGO_INITDB_ROOT_PASSWORD: Secret[str]
+    MONGO_HOST: str
+    MONGO_PORT: int
+    MONGO_INITDB_DATABASE: str
+
+    # Current environment (e.g., TESTING, PRODUCTION)
     ENVIRONMENT: Environment = Environment.PRODUCTION
 
     # Cors settings
@@ -56,7 +63,7 @@ class Config(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     @staticmethod
-    def format_url(scheme: str, username: str, password: str, host: str, port: int, database: str) -> str:
+    def format_url(scheme: str, username: str, password: str, host: str, port: int, database: str = "") -> str:
         """
         Format database url.
 
@@ -86,7 +93,7 @@ class Config(BaseSettings):
         url = self.format_url(
             scheme=self.MYSQL_SCHEME,
             username=self.MYSQL_ROOT_USERNAME,
-            password=self.MYSQL_ROOT_PASSWORD,
+            password=self.MYSQL_ROOT_PASSWORD.get_secret_value(),
             host=self.MYSQL_HOST,
             port=self.MYSQL_PORT,
             database=f"/{self.MYSQL_DATABASE}",
@@ -94,12 +101,24 @@ class Config(BaseSettings):
         return MySQLDsn(url=url)
 
     @property
+    def MONGO_URL(self) -> MongoDsn:
+        """Generate and return the MongoDB connection URL."""
+        url = self.format_url(
+            scheme=self.MONGO_SCHEME,
+            username=self.MONGO_INITDB_ROOT_USERNAME,
+            password=self.MONGO_INITDB_ROOT_PASSWORD.get_secret_value(),
+            host=self.MONGO_HOST,
+            port=self.MONGO_PORT,
+        )
+        return MongoDsn(url=url)
+
+    @property
     def REDIS_URL(self) -> RedisDsn:
-        """Generate and return the MySQL connection URL."""
+        """Generate and return the Redis connection URL."""
         url = self.format_url(
             scheme=self.REDIS_SCHEME,
-            username=self.REDIS_ROOT_USERNAME,
-            password=self.REDIS_ROOT_PASSWORD,
+            username=self.REDIS_ROOT_USERNAME if self.REDIS_ROOT_USERNAME else "",
+            password=self.REDIS_ROOT_PASSWORD.get_secret_value(),
             host=self.REDIS_HOST,
             port=self.REDIS_PORT,
             database=f"/{self.REDIS_DATABASE}" if self.REDIS_DATABASE else "",
@@ -108,7 +127,6 @@ class Config(BaseSettings):
 
 
 settings = Config()
-
 app_configs: dict[str, Any] = {"title": "FastAPI MultiDB"}
 
 # Disable the OpenAPI documentation in non-debug environments

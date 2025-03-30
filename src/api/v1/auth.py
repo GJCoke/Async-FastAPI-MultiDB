@@ -11,9 +11,10 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter
+from beanie import PydanticObjectId
 
-from src.core.mysql import SessionDep
 from src.core.route import BaseRoute
+from src.deps.database import MongoTestDep, SessionDep
 from src.models.test import testCrud
 from src.schemas.response import Response
 
@@ -21,10 +22,24 @@ router = APIRouter(tags=["auth"], route_class=BaseRoute)
 
 
 @router.post("/login/{user_id}")
-async def login(session: SessionDep) -> Response[Any]:
+async def login(mongo: MongoTestDep, name: str, session: SessionDep) -> Response[Any]:
     crud = testCrud
-    test = await crud.get_paginate(session, size=2, order_by=crud.Model.id)
 
+    # await redis.set("test", "vvvvvvvv")
+    # await redis.get("cccc")
+    # test = TestDocument(name="12345")
+    # await test.insert()
+    # test = await TestDocument.find_one(TestDocument.name == "12345")
+    # test.desc_test = "running me111111!"
+    # await test.save()
+    # info = await TestDocument.find_all().to_list()
+    # result = await redis.exists("test", "ccc")
+    test = await crud.get(session, UUID("0195e257-d45a-71ad-9cdb-7065e0be4323"))
+
+    # test = await mongo.create({"name": name})
+    test1 = await mongo.get(PydanticObjectId("67e949583be5692177c22766"), nullable=False)
+    # test = await mongo.get_all()
+    print(test1, "12312312321321")
     return Response(data=test)
 
 

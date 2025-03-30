@@ -7,26 +7,38 @@ Author : Coke
 Date   : 2025-03-18
 """
 
-from typing import Any, Generic, Literal, TypeVar, cast, overload
+from typing import Any, Generic, Literal, Mapping, TypeVar, cast, overload
 from uuid import UUID
 
+from beanie import PydanticObjectId
+from beanie.odm.enums import SortDirection
+from beanie.operators import In
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import ColumnElement
 from sqlmodel import func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.exceptions import ExistsException, NotFoundException
+from src.models.base import Document as _Document
 from src.models.base import SQLModel as _SQLModel
 from src.schemas.base import BaseModel
 from src.schemas.response import PaginatedResponse
 
 SQLModel = TypeVar("SQLModel", bound=_SQLModel)
+Document = TypeVar("Document", bound=_Document)
 CreateSchema = TypeVar("CreateSchema", bound=BaseModel)
 UpdateSchema = TypeVar("UpdateSchema", bound=BaseModel)
 T = TypeVar("T", bound=_SQLModel)
 
 
 class BaseCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
+    """
+    Base class for SQL CRUD operations using SQLAlchemy.
+
+    This class provides generic CRUD operations for SQLModel models.
+    # TODO: set global session.
+    """
+
     def __init__(self, model: type[SQLModel]) -> None:
         """
         Initialize the BaseCRUD with a SQLModel.
@@ -35,10 +47,10 @@ class BaseCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             model (type[SQLModel]): The SQLModel class for the CRUD operations.
         """
 
-        self.model = model
+        self._model = model
 
     @property
-    def Model(self) -> type[SQLModel]:
+    def model(self) -> type[SQLModel]:
         """
         Get the current model class.
 
@@ -46,7 +58,7 @@ class BaseCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             type[SQLModel]: The model class being used in the CRUD operations.
         """
 
-        return self.model
+        return self._model
 
     @overload
     async def get(self, session: AsyncSession, _id: UUID, /, *, nullable: Literal[False]) -> SQLModel: ...
@@ -318,3 +330,202 @@ class BaseCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         await session.delete(response)
         await session.commit()
         return response
+
+
+class BaseMongoCRUD(Generic[Document, CreateSchema, UpdateSchema]):
+    """
+    Base class for MongoDB CRUD operations using Beanie.
+
+    This class provides generic CRUD operations for Beanie Document models.
+    """
+
+    def __init__(self, model: type[Document]) -> None:
+        """
+        Initializes the CRUD instance with the given model.
+
+        Args:
+            model (Type[Document]): The Beanie document model.
+        """
+
+        self._model = model
+
+    @property
+    def model(self) -> type[Document]:
+        """
+        Returns the document model associated with this CRUD instance.
+
+        Returns:
+            Type[Document]: The document model.
+        """
+
+        return self._model
+
+    @overload
+    async def get(self, _id: PydanticObjectId, /, *, nullable: Literal[False]) -> Document: ...
+
+    @overload
+    async def get(self, _id: PydanticObjectId, /, *, nullable: Literal[True]) -> Document | None: ...
+
+    async def get(self, _id: PydanticObjectId, /, *, nullable: bool = True) -> Document | None:
+        """
+        Retrieves a document by its ID.
+
+        Args:
+            _id (Any): The document ID.
+            nullable (bool, optional): Whether to allow a None response. Defaults to True.
+
+        Returns:
+            Document | None: The retrieved document or None if not found.
+
+        Raises:
+            NotFoundException: If the document is not found and nullable is False.
+        """
+
+        response = await self.model.get(document_id=_id)
+
+        if not nullable and not response:
+            raise NotFoundException(detail=f"{_id} not found.")
+
+        return response
+
+    async def get_by_ids(self, ids: list[PydanticObjectId], /) -> list[Document]:
+        """
+        Retrieves multiple documents by a list of IDs.
+
+        Args:
+            ids (list[Any]): List of document IDs.
+
+        Returns:
+            list[Document]: A list of retrieved documents.
+        """
+
+        response = await self.model.find(In("_id", ids)).to_list()
+        return response
+
+    async def get_all(self, *args: Mapping[str, Any] | bool) -> list[Document]:
+        """
+        Retrieves all documents matching the given filters.
+
+        Args:
+            *args (Mapping[str, Any] | bool): Query filters.
+
+        Returns:
+            list[Document]: A list of matching documents.
+        """
+
+        response = await self.model.find(*args).to_list()
+        return response
+
+    async def get_count(self, *args: Mapping[str, Any] | bool) -> int:
+        """
+        Counts the number of documents matching the given filters.
+
+        Args:
+            *args (Mapping[str, Any] | bool): Query filters.
+
+        Returns:
+            int: The count of matching documents.
+        """
+
+        response = await self.model.find(*args).count()
+        return response
+
+    async def get_paginate(
+        self,
+        *args: Mapping[str, Any] | bool,
+        page: int = 1,
+        size: int = 20,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
+    ) -> PaginatedResponse[Document]:
+        """
+        Retrieves paginated results for documents matching the given filters.
+
+        Args:
+            *args (Mapping[str, Any] | bool): Query filters.
+            page (int, optional): Page number. Defaults to 1.
+            size (int, optional): Page size. Defaults to 20.
+            order_by (str | tuple[str, int] | list[tuple[str, int]] | None, optional): Sorting order. Defaults to None.
+
+        Returns:
+            dict: Paginated response containing records, total count, page, and page size.
+        """
+
+        _response = self.model.find(*args).skip((page - 1) * size).limit(size)
+
+        if order_by is not None:
+            _response.sort(*order_by)
+
+        response = await _response.to_list()
+        total = await self.get_count(*args)
+
+        return PaginatedResponse(records=response, total=total, page=page, page_size=size)
+
+    async def create(self, create_in: CreateSchema | Document | dict[str, Any]) -> Document:
+        """
+        Creates a new document in the collection.
+
+        Args:
+            create_in (CreateSchema | Document | dict[str, Any]): The document to be created.
+
+        Returns:
+            Document: The created document.
+        """
+
+        response = self.model.model_validate(create_in)
+        await response.create()
+
+        return response
+
+    @staticmethod
+    async def update(current_model: Document, update_in: UpdateSchema | dict[str, Any]) -> Document:
+        """
+        Updates an existing document.
+
+        Args:
+            current_model (Document): The document to be updated.
+            update_in (UpdateSchema | dict[str, Any]): The update data.
+
+        Returns:
+            Document: The updated document.
+        """
+
+        if not isinstance(update_in, dict):
+            update_in = update_in.serializable_dict(exclude_unset=True)
+
+        for field, value in update_in.items():
+            setattr(current_model, field, value)
+
+        # TODO: Investigate why PyCharm prompts that a required parameter is not provided.
+        await current_model.save()  # type: ignore
+
+        return current_model
+
+    async def update_by_id(self, _id: PydanticObjectId, /, *, update_in: UpdateSchema | dict[str, Any]) -> Document:
+        """
+        Updates a document by its ID.
+
+        Args:
+            _id (Any): The document ID.
+            update_in (UpdateSchema | dict[str, Any]): The update data.
+
+        Returns:
+            Document: The updated document.
+        """
+
+        update_model = await self.get(_id, nullable=False)
+        return await self.update(update_model, update_in)
+
+    async def delete(self, _id: PydanticObjectId, /) -> Document:
+        """
+        Deletes a document by its ID.
+
+        Args:
+            _id (Any): The document ID.
+
+        Returns:
+            Document: The deleted document.
+        """
+
+        update_model = await self.get(_id, nullable=False)
+        await update_model.delete()  # type: ignore
+        return update_model

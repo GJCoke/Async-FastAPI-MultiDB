@@ -24,7 +24,7 @@ Async-FastAPI-MultiDB 是一个异步 FastAPI 模板项目，旨在无缝集成 
     ```
 3. 使用Docker
     ```bash
-    docker network create async_fastapi_multi_network
+    docker network create app_network
     docker compose up -d --build
     ```
    访问 `http://localhost:16000/docs` 即可查看 Swagger 文档

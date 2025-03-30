@@ -1,7 +1,7 @@
 from sqlmodel import Field
 
 from src.crud.base import BaseCRUD
-from src.models.base import SQLModel
+from src.models.base import Document, SQLModel
 
 
 class Test(SQLModel, table=True):
@@ -9,6 +9,14 @@ class Test(SQLModel, table=True):
 
     name: str = Field(..., unique=True)
     desc_test: str = ""
+
+
+class TestDocument(Document):
+    name: str = "test"
+    desc_test: str = "test desc"
+
+    class Settings:
+        collection = "test_affiliation"
 
 
 testCrud = BaseCRUD[Test, Test, Test](Test)
