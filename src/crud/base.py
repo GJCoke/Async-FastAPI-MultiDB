@@ -470,8 +470,8 @@ class BaseMongoCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         Returns:
             Document: The created document.
         """
-
         response = self.model.model_validate(create_in)
+        # TODO: Whether to replace with insert_one?
         await response.create()
 
         return response
@@ -496,7 +496,7 @@ class BaseMongoCRUD(Generic[Document, CreateSchema, UpdateSchema]):
             setattr(current_model, field, value)
 
         # TODO: Investigate why PyCharm prompts that a required parameter is not provided.
-        await current_model.save()  # type: ignore
+        await current_model.replace()  # type: ignore
 
         return current_model
 

@@ -10,7 +10,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from beanie import Document as _Document
-from beanie import Save, before_event
+from beanie import Replace, before_event
 from pydantic import field_serializer
 from sqlmodel import Field
 from sqlmodel import SQLModel as _SQLModel
@@ -98,7 +98,7 @@ class Document(_Document, BaseModel):
         schema_extra={"examples": ["2024-07-31 16:07:34"]},
     )
 
-    @before_event(Save)
+    @before_event(Replace)
     def set_update_time(self) -> None:
         """
         Sets the update_time field to the current timestamp before saving the document.
