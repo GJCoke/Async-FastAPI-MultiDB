@@ -10,7 +10,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from beanie import Document as _Document
-from beanie import Replace, before_event
+from beanie import PydanticObjectId, Replace, before_event
 from pydantic import field_serializer
 from sqlmodel import Field
 from sqlmodel import SQLModel as _SQLModel
@@ -74,20 +74,13 @@ class SQLModel(_SQLModel, BaseModel):  # type: ignore
         return convert_datetime_to_gmt(value)
 
 
-class Document(_Document, BaseModel):
+class Document(_Document):
     """
     Base Document class that combines Pydantic and Beanie functionality.
 
     Inherits from both BaseModel (custom Pydantic model) and Document (Beanie model).
     Provides common fields and serialization for database models.
     """
-
-    # TODO: find _id to id method.
-    # id: PydanticObjectId = Field(
-    #     alias="_id",
-    #     nullable=False,
-    #     primary_key=True,
-    # )
 
     create_time: datetime = Field(
         default_factory=datetime.now,
@@ -107,6 +100,10 @@ class Document(_Document, BaseModel):
         ensuring that the update_time field reflects the last modification time.
         """
         self.update_time = datetime.now()
+
+    @field_serializer("id")
+    def serialize_id(self, id: PydanticObjectId) -> str:
+        return str(id)
 
     @field_serializer("create_time", "update_time")
     def serialize_datetime(self, value: datetime) -> str:

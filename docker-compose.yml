@@ -17,6 +17,7 @@ services:
 
     depends_on:  # Make sure that app_mysql starts first by depending on it.
       - app_mysql
+      - app_mongo
 
   app_mysql:  # mysql server
     container_name: app_mysql

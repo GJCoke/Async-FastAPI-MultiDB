@@ -398,8 +398,7 @@ class BaseMongoCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         Returns:
             list[Document]: A list of retrieved documents.
         """
-
-        response = await self.model.find(In("_id", ids)).to_list()
+        response = await self.model.find(In(self.model.id, ids)).to_list()
         return response
 
     async def get_all(self, *args: Mapping[str, Any] | bool) -> list[Document]:

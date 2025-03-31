@@ -18,11 +18,7 @@ class BaseModel(_BaseModel):
     """Base schemas."""
 
     model_config = ConfigDict(
-        alias_generator=AliasGenerator(
-            alias=to_camel,
-            validation_alias=to_camel,
-            serialization_alias=to_camel,
-        ),  # Use camel case for field names and aliases.
+        alias_generator=AliasGenerator(alias=to_camel),  # Use camel case for field names and aliases.
         populate_by_name=True,  # Allow populating fields by both name and alias.
     )
 
