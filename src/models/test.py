@@ -1,6 +1,6 @@
 from sqlmodel import Field
 
-from src.crud.base import BaseCRUD
+from src.crud.base import BaseSQLModelCRUD
 from src.models.base import Document, SQLModel
 
 
@@ -19,7 +19,7 @@ class TestDocument(Document):
         collection = "test_affiliation"
 
 
-testCrud = BaseCRUD[Test, Test, Test](Test)
+testCrud = BaseSQLModelCRUD[Test, Test, Test](Test)
 
 
 if __name__ == "__main__":

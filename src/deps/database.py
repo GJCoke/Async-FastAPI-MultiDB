@@ -12,8 +12,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.config import settings
 from src.core.database import AsyncRedisClient, AsyncSessionLocal, RedisManager
-from src.crud.base import BaseMongoCRUD
-from src.models.test import TestDocument
+from src.crud.base import BaseSQLModelCRUD, BaseBeanieCRUD
+from src.models.test import Test, TestDocument
 
 
 # Dependency function that yields a database session to be used in FastAPI route handlers.
@@ -43,9 +43,17 @@ async def get_redis_client() -> AsyncRedisClient:
 RedisClientDep = Annotated[AsyncRedisClient, Depends(get_redis_client)]
 
 
-async def get_mongo_test() -> BaseMongoCRUD[TestDocument, TestDocument, TestDocument]:
+async def get_mongo_test() -> BaseBeanieCRUD[TestDocument, TestDocument, TestDocument]:
     # TODO: this is delete code.
-    return BaseMongoCRUD[TestDocument, TestDocument, TestDocument](TestDocument)
+    return BaseBeanieCRUD[TestDocument, TestDocument, TestDocument](TestDocument)
 
 
-MongoTestDep = Annotated[BaseMongoCRUD[TestDocument, TestDocument, TestDocument], Depends(get_mongo_test)]
+MongoTestDep = Annotated[BaseBeanieCRUD[TestDocument, TestDocument, TestDocument], Depends(get_mongo_test)]
+
+
+async def get_sql_test(session: SessionDep) -> BaseSQLModelCRUD[Test, Test, Test]:
+    # TODO: this is delete code.
+    return BaseSQLModelCRUD[Test, Test, Test](Test, session=session)
+
+
+SQLTestDep = Annotated[BaseSQLModelCRUD[Test, Test, Test], Depends(get_sql_test)]

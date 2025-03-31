@@ -14,7 +14,7 @@ from beanie import PydanticObjectId
 from fastapi import APIRouter
 
 from src.core.route import BaseRoute
-from src.deps.database import MongoTestDep, SessionDep
+from src.deps.database import MongoTestDep, SessionDep, SQLTestDep
 from src.models.test import testCrud
 from src.schemas.base import BaseModel
 from src.schemas.response import Response
@@ -29,8 +29,8 @@ class Test(BaseModel):
 
 
 @router.post("/login/{user_id}")
-async def login(mongo: MongoTestDep, name: str, session: SessionDep) -> Response[Any]:
-    crud = testCrud
+async def login(mongo: MongoTestDep, name: str, crud: SQLTestDep) -> Response[Any]:
+    # crud = testCrud
 
     # await redis.set("test", "vvvvvvvv")
     # await redis.get("cccc")
@@ -41,9 +41,9 @@ async def login(mongo: MongoTestDep, name: str, session: SessionDep) -> Response
     # await test.save()
     # info = await TestDocument.find_all().to_list()
     # result = await redis.exists("test", "ccc")
-    test = await crud.get(session, UUID("0195e257-d45a-71ad-9cdb-7065e0be4323"))
+    # test = await crud.get(UUID("0195e257-d45a-71ad-9cdb-7065e0be4323"))
 
-    # test = await mongo.create({"name": name})
+    test = await mongo.create({"name": name})
     # test1 = await mongo.get(PydanticObjectId("67e949583be5692177c22766"), nullable=False)
     # test = await mongo.get_all()
     # test_all = []
@@ -60,12 +60,12 @@ async def login(mongo: MongoTestDep, name: str, session: SessionDep) -> Response
 @router.post("/add/test")
 async def add_test(session: SessionDep, name: str) -> Response[Any]:
     crud = testCrud
-    response = await crud.create(session, {"name": name})
+    response = await crud.create({"name": name}, session=session)
     return Response(data=response)
 
 
 @router.put("/add/test")
 async def put_test(session: SessionDep, id: UUID, name: str) -> Response[Any]:
     crud = testCrud
-    response = await crud.update_by_id(session, id, {"name": name, "desc_test": "desc1111"})
+    response = await crud.update_by_id(id, {"name": name, "desc_test": "desc1111"}, session=session)
     return Response(data=response)
