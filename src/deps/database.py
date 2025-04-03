@@ -12,7 +12,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.config import settings
 from src.core.database import AsyncRedisClient, AsyncSessionLocal, RedisManager
-from src.crud.base import BaseSQLModelCRUD, BaseBeanieCRUD
+from src.crud.base import BaseBeanieCRUD, BaseSQLModelCRUD
 from src.models.test import Test, TestDocument
 
 

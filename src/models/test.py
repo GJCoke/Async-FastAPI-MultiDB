@@ -23,7 +23,7 @@ testCrud = BaseSQLModelCRUD[Test, Test, Test](Test)
 
 
 if __name__ == "__main__":
-    from sqlmodel import Session, SQLModel, create_engine
+    from sqlmodel import Session, SQLModel, create_engine  # type: ignore
 
     sqlite_file_name = "root:123456@127.0.0.1:33306/client"
     sqlite_url = f"mysql+mysqlconnector://{sqlite_file_name}"

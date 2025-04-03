@@ -13,6 +13,7 @@ from uuid import UUID
 from beanie import PydanticObjectId
 from fastapi import APIRouter
 
+from src.core.config import settings
 from src.core.route import BaseRoute
 from src.deps.database import MongoTestDep, SessionDep, SQLTestDep
 from src.models.test import testCrud
@@ -41,9 +42,9 @@ async def login(mongo: MongoTestDep, name: str, crud: SQLTestDep) -> Response[An
     # await test.save()
     # info = await TestDocument.find_all().to_list()
     # result = await redis.exists("test", "ccc")
-    # test = await crud.get(UUID("0195e257-d45a-71ad-9cdb-7065e0be4323"))
+    _sql = await crud.get_all()
 
-    test = await mongo.create({"name": name})
+    _mongo = await mongo.create({"name": name})
     # test1 = await mongo.get(PydanticObjectId("67e949583be5692177c22766"), nullable=False)
     # test = await mongo.get_all()
     # test_all = []
@@ -54,7 +55,7 @@ async def login(mongo: MongoTestDep, name: str, crud: SQLTestDep) -> Response[An
     # print(_id, "asdasdsa")
     # test_all = await mongo.get_by_ids([_id])
 
-    return Response(data=test)
+    return Response(data={"mongo_a": settings.MONGO_URL, "sql": _sql, "mongo": _mongo})
 
 
 @router.post("/add/test")

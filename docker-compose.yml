@@ -1,6 +1,7 @@
 services:
   app:
     container_name: app
+    restart: always
     image: app_image
     env_file:
       - .env
@@ -21,6 +22,7 @@ services:
 
   app_mysql:  # mysql server
     container_name: app_mysql
+    restart: always
     hostname: app_mysql
     image: mysql:9.0
     env_file:
@@ -40,6 +42,7 @@ services:
 
   app_mongo:  # mongodb server
     container_name: app_mongo
+    restart: always
     hostname: app_mongo
     image: mongo:latest
     env_file:
@@ -48,13 +51,16 @@ services:
     volumes:
       - app_mongo_data:/var/lib/mongo
 
-    command: mongod --auth
+    command:
+      - mongod
+      - --auth
 
     ports:
       - "27018:27017"
 
   app_redis:  # redis config.
     image: redis:6.2-alpine
+    restart: always
     hostname: app_redis
     container_name: app_redis
 
@@ -71,6 +77,23 @@ services:
     ports:
       - "36379:6379"  # Map the host's port 36379 to the container's port 6379.
 
+  app_minio:  # minio config.
+    image: minio/minio:latest
+#    restart: always
+    container_name: app_minio
+
+    env_file:
+      - .env
+
+    volumes:
+      - app_minio_data:/data
+
+    command: server /data --console-address ":9001"
+
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
 volumes:  # data persistence.
   app_mysql_data:
     driver: "local"
@@ -82,6 +105,9 @@ volumes:  # data persistence.
     driver: "local"
 
   app_redis_data:
+    driver: "local"
+
+  app_minio_data:
     driver: "local"
 
 networks:

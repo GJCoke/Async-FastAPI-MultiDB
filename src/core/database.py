@@ -282,7 +282,7 @@ class MongoManager:
         """
         cls._client = AsyncIOMotorClient(str(settings.MONGO_URL))
         await init_beanie(
-            database=cls._client[settings.MONGO_INITDB_DATABASE],
+            database=cls._client["beanie_db"],
             document_models=get_document_models(),
         )
         logger.info("Mongo connection initialization completed.")
