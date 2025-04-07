@@ -16,29 +16,22 @@ services:
     ports:
       - "16000:8006"
 
-    depends_on:  # Make sure that app_mysql starts first by depending on it.
-      - app_mysql
+    depends_on:  # Make sure that app postgresql and mongodb starts first by depending on it.
+      - app_postgresql
       - app_mongo
 
-  app_mysql:  # mysql server
-    container_name: app_mysql
+  app_postgresql:
+    container_name: app_postgresql
     restart: always
-    hostname: app_mysql
-    image: mysql:9.0
+    hostname: app_postgresql
+    image: bitnami/postgresql
     env_file:
       - .env
-
     volumes:
-      - app_mysql_data:/var/lib/mysql
-      - app_mysql_data_backups:/backups
-      # - ./scripts/mysql:/scripts
-
-    command:
-      - --character-set-server=utf8mb4  # Set the database character set to utf8mb4.
-      - --collation-server=utf8mb4_general_ci  # Set the collation to utf8mb4_general_ci.
+      - app_postgresql_data:/var/lib/postgresql
 
     ports:
-      - "33306:3306"
+      - "35432:5432"
 
   app_mongo:  # mongodb server
     container_name: app_mongo
@@ -95,10 +88,7 @@ services:
       - "9001:9001"
 
 volumes:  # data persistence.
-  app_mysql_data:
-    driver: "local"
-
-  app_mysql_data_backups:
+  app_postgresql_data:
     driver: "local"
 
   app_mongo_data:

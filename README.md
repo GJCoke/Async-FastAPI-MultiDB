@@ -1,6 +1,6 @@
 <div align="center">
 	<h1>Async-FastAPI-MultiDB</h1>
-  <span><a href="./README-EN.md">English</a> | 中文</span>
+  <span>中文 | <a href="./README-EN.md">English</a></span>
 </div>
 
 Async-FastAPI-MultiDB 是一个异步 FastAPI 模板项目，旨在无缝集成 SQL (如 PostgreSQL, MySQL) 和 NoSQL (如 MongoDB) 数据库。该模板提供了一种现代化且高效的 Web 框架解决方案，支持异步请求处理，非常适合用于构建可扩展的 API 服务。
@@ -47,6 +47,7 @@ Async-FastAPI-MultiDB 是一个异步 FastAPI 模板项目，旨在无缝集成 
 ## 使用方法
 1. 为 SQL 数据库（如 PostgreSQL）创建并应用迁移：
     ```bash
+    alembic revision --autogenerate -m "Init Database"
     alembic upgrade head
     ```
 2. 运行服务器：

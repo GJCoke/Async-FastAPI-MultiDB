@@ -26,7 +26,7 @@ from src.core.config import settings
 from src.models.base import Document
 
 logger = logging.getLogger("app")
-DATABASE_URL = str(settings.MYSQL_URL)
+DATABASE_URL = str(settings.DATABASE_POSTGRESQL_URL)
 
 # Create an asynchronous SQLAlchemy engine for MySQL connection.
 # The 'echo' parameter is set based on the environment debug flag,
@@ -280,7 +280,7 @@ class MongoManager:
         Raises:
             RuntimeError: If the connection fails.
         """
-        cls._client = AsyncIOMotorClient(str(settings.MONGO_URL))
+        cls._client = AsyncIOMotorClient(str(settings.DATABASE_MONGO_URL))
         await init_beanie(
             database=cls._client["beanie_db"],
             document_models=get_document_models(),

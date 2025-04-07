@@ -19,11 +19,15 @@ TB = GB * KB
 
 
 class UploadPart(BaseModel):
+    """Class representing a part of a multipart upload."""
+
     part_number: str
     upload_id: str
 
 
 class MinioClient:
+    """MinioClient class to interact with the Minio(S3) object storage service."""
+
     # TODO: undone.
     def __init__(
         self,
@@ -34,6 +38,17 @@ class MinioClient:
         bucket_name: str | None = None,
         secure: bool = False,
     ):
+        """
+        Initializes the Minio client.
+
+        Args:
+            endpoint (str): The Minio service endpoint.
+            access_key (str): The access key for authentication.
+            secret_key (str): The secret key for authentication.
+            bucket_name (Optional[str]): The default bucket name to use.
+            secure (bool): Whether to use HTTPS (True) or HTTP (False).
+        """
+
         self._endpoint = endpoint
         self._access_key = access_key
         self._secret_key = secret_key
@@ -47,10 +62,27 @@ class MinioClient:
 
     @property
     def client(self) -> Minio:
+        """
+        Gets the Minio client instance.
+
+        Returns:
+            Minio: The Minio client.
+        """
         return self._client
 
     @property
     def bucket_name(self) -> str:
+        """
+        Gets the bucket name.
+
+        Checks if the bucket exists, and raises an exception if not.
+
+        Returns:
+            str: The bucket name.
+
+        Raises:
+            AttributeError: If the bucket name is not set or does not exist.
+        """
         if self._bucket_name is None:
             raise AttributeError("Bucket name is not set.")
 
@@ -60,9 +92,32 @@ class MinioClient:
         return self._bucket_name
 
     def bucket_exists(self, bucket_name: str) -> bool:
+        """
+        Checks if a bucket exists.
+
+        Args:
+            bucket_name (str): The name of the bucket.
+
+        Returns:
+            bool: True if the bucket exists, False otherwise.
+        """
         return self.client.bucket_exists(bucket_name)
 
     def file_exists(self, filename: str, *, bucket_name: str | None = None, nullable: bool = True) -> bool:
+        """
+        Checks if a file exists in the bucket.
+
+        Args:
+            filename (str): The name of the file to check.
+            bucket_name (Optional[str]): The name of the bucket. Defaults to the default bucket.
+            nullable (bool): If True, returns False when the file does not exist. If False, raises an exception.
+
+        Returns:
+            bool: True if the file exists, False otherwise.
+
+        Raises:
+            S3Error: If the file does not exist and nullable is False.
+        """
         bucket_name = bucket_name or self.bucket_name
 
         try:
@@ -81,6 +136,22 @@ class MinioClient:
         nullable: bool = True,
         expires: timedelta = timedelta(days=30),
     ) -> str:
+        """
+        Generates a presigned URL for downloading a file.
+
+        Args:
+            filename (str): The name of the file to generate the URL for.
+            bucket_name (Optional[str]): The name of the bucket. Defaults to the default bucket.
+            nullable (bool): If True, checks if the file exists before generating the URL.
+             If False, raises an exception if the file doesn't exist.
+            expires (timedelta): The expiration time of the presigned URL. Default is 30 days.
+
+        Returns:
+            str: The presigned URL to access the file.
+
+        Raises:
+            AttributeError: If the file does not exist and nullable is False.
+        """
         bucket_name = bucket_name or self.bucket_name
         if not nullable:
             self.file_exists(filename, bucket_name=bucket_name, nullable=False)
@@ -93,6 +164,17 @@ class MinioClient:
         bucket_name: str | None = None,
         headers: dict | None = None,
     ) -> str:
+        """
+        Starts a multipart upload for a file.
+
+        Args:
+            filename (str): The name of the file to upload.
+            bucket_name (Optional[str]): The name of the bucket. Defaults to the default bucket.
+            headers (Optional[dict]): Custom headers to include in the upload request.
+
+        Returns:
+            str: The upload ID for the multipart upload.
+        """
         bucket_name = bucket_name or self.bucket_name
         headers = headers or {}
         return self.client._create_multipart_upload(bucket_name=bucket_name, object_name=filename, headers=headers)
@@ -105,6 +187,15 @@ class MinioClient:
         *,
         bucket_name: str | None = None,
     ) -> None:
+        """
+        Completes the multipart upload by combining the uploaded parts.
+
+        Args:
+            filename (str): The name of the file.
+            upload_id (str): The upload ID for the multipart upload.
+            max_parts (int): The maximum number of parts to be listed and completed.
+            bucket_name (Optional[str]): The name of the bucket. Defaults to the default bucket.
+        """
         bucket_name = bucket_name or self.bucket_name
         part_list = self.client._list_parts(
             bucket_name=bucket_name,
@@ -127,6 +218,22 @@ class MinioClient:
         upload_part: UploadPart | dict[str, str] | None = None,
         expires: timedelta = timedelta(days=2),
     ) -> str:
+        """
+        Generates a presigned URL for uploading a file part.
+
+        Args:
+            filename (str): The name of the file to upload.
+            bucket_name (Optional[str]): The name of the bucket. Defaults to the default bucket.
+            upload_part (Optional[UploadPart|dict]): The part details (part number and upload ID).
+             Can be provided as a dictionary or an UploadPart instance.
+            expires (timedelta): The expiration time of the presigned URL. Default is 2 days.
+
+        Returns:
+            str: The presigned PUT URL for uploading a part of the file.
+
+        Raises:
+            AttributeError: If the part number is invalid.
+        """
         bucket_name = bucket_name or self.bucket_name
         upload_part_map = {}
         if upload_part is not None:

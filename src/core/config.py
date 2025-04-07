@@ -9,7 +9,7 @@ Date   : 2025-03-11
 
 from typing import Any
 
-from pydantic import MongoDsn, MySQLDsn, RedisDsn, Secret
+from pydantic import MongoDsn, PostgresDsn, RedisDsn, Secret
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.core.environment import Environment
@@ -22,12 +22,12 @@ class Config(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     # MySQL configuration settings
-    MYSQL_SCHEME: str
-    MYSQL_ROOT_USERNAME: str
-    MYSQL_ROOT_PASSWORD: Secret[str]
-    MYSQL_HOST: str
-    MYSQL_PORT: int = 3306  # Default MySQL port
-    MYSQL_DATABASE: str
+    POSTGRESQL_SCHEME: str
+    POSTGRESQL_USERNAME: str
+    POSTGRESQL_PASSWORD: Secret[str]
+    POSTGRESQL_HOST: str
+    POSTGRESQL_PORT: int = 5432  # Default MySQL port
+    POSTGRESQL_DATABASE: str
 
     # Redis configuration settings
     REDIS_SCHEME: str = "redis"
@@ -43,8 +43,12 @@ class Config(BaseSettings):
     MONGO_INITDB_ROOT_USERNAME: str
     MONGO_INITDB_ROOT_PASSWORD: Secret[str]
     MONGO_HOST: str
-    MONGO_PORT: int
+    MONGO_PORT: int = 27017
     MONGO_INITDB_DATABASE: str
+
+    # Minio configuration settings
+    MINIO_ROOT_USER: str
+    MINIO_ROOT_PASSWORD: Secret[str]
 
     # Current environment (e.g., TESTING, PRODUCTION)
     ENVIRONMENT: Environment = Environment.PRODUCTION
@@ -88,20 +92,20 @@ class Config(BaseSettings):
         )
 
     @property
-    def MYSQL_URL(self) -> MySQLDsn:
-        """Generate and return the MySQL connection URL."""
+    def DATABASE_POSTGRESQL_URL(self) -> PostgresDsn:
+        """Generate and return the postgresql connection URL."""
         url = self.format_url(
-            scheme=self.MYSQL_SCHEME,
-            username=self.MYSQL_ROOT_USERNAME,
-            password=self.MYSQL_ROOT_PASSWORD.get_secret_value(),
-            host=self.MYSQL_HOST,
-            port=self.MYSQL_PORT,
-            database=f"/{self.MYSQL_DATABASE}",
+            scheme=self.POSTGRESQL_SCHEME,
+            username=self.POSTGRESQL_USERNAME,
+            password=self.POSTGRESQL_PASSWORD.get_secret_value(),
+            host=self.POSTGRESQL_HOST,
+            port=self.POSTGRESQL_PORT,
+            database=f"/{self.POSTGRESQL_DATABASE}",
         )
-        return MySQLDsn(url=url)
+        return PostgresDsn(url=url)
 
     @property
-    def MONGO_URL(self) -> MongoDsn:
+    def DATABASE_MONGO_URL(self) -> MongoDsn:
         """Generate and return the MongoDB connection URL."""
         url = self.format_url(
             scheme=self.MONGO_SCHEME,
