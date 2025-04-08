@@ -153,7 +153,7 @@ class MinioClient:
             str: The presigned URL to access the file.
 
         Raises:
-            AttributeError: If the file does not exist and nullable is False.
+            S3Error: If the file does not exist and nullable is False.
         """
         bucket_name = bucket_name or self.bucket_name
         if not nullable:
