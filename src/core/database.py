@@ -1,7 +1,7 @@
 """
-MySQL Database Configuration.
+Database Configuration.
 
-This file configures the MySQL database connection using SQLAlchemy
+This file configures the database connection using SQLAlchemy
 and integrates it with FastAPI for asynchronous database operations.
 
 Author : Coke
@@ -28,7 +28,7 @@ from src.models.base import Document
 logger = logging.getLogger("app")
 DATABASE_URL = str(settings.DATABASE_POSTGRESQL_URL)
 
-# Create an asynchronous SQLAlchemy engine for MySQL connection.
+# Create an asynchronous SQLAlchemy engine for PostgreSQL connection.
 # The 'echo' parameter is set based on the environment debug flag,
 # and 'pool_recycle' ensures that database connections are recycled after 60 seconds.
 engine = create_async_engine(DATABASE_URL, echo=settings.ENVIRONMENT.is_debug, pool_recycle=60)

@@ -6,9 +6,12 @@ Date    : 2025-04-03
 """
 
 from datetime import timedelta
+from typing import BinaryIO, Iterator
 
 from minio import Minio
+from minio.datatypes import Bucket, Object
 from minio.error import S3Error
+from minio.helpers import ObjectWriteResult
 
 from src.schemas.base import BaseModel
 
@@ -253,11 +256,87 @@ class MinioClient:
             extra_query_params=upload_part_map,
         )
 
+    def upload(
+        self,
+        filename: str,
+        data: BinaryIO,
+        *,
+        length: int = -1,
+        content_type: str = "application/octet-stream",
+        num_parallel_uploads: int = 3,
+        bucket_name: str | None = None,
+    ) -> ObjectWriteResult:
+        """
+        Uploads a file to the specified Minio bucket.
+
+        This method uploads data to a bucket in parallel, using multiple parts if necessary.
+
+        Args:
+            filename (str): The name of the object in the Minio bucket.
+            data (BinaryIO): The file-like object containing the data to be uploaded.
+            length (int, optional): The length of the data to be uploaded. Defaults to -1 (unknown).
+            content_type (str, optional): The content type (MIME type) of the object.
+             Defaults to "application/octet-stream".
+            num_parallel_uploads (int, optional): The number of parallel uploads for large objects. Defaults to 3.
+            bucket_name (Optional[str], optional): The name of the bucket where the object will be uploaded.
+             Defaults to None (uses default bucket).
+
+        Returns:
+            ObjectWriteResult: The result of the object upload operation.
+        """
+        bucket_name = bucket_name or self.bucket_name
+
+        return self.client.put_object(
+            bucket_name=bucket_name,
+            object_name=filename,
+            data=data,
+            length=length,
+            content_type=content_type,
+            part_size=64 * MB,
+            num_parallel_uploads=num_parallel_uploads,
+        )
+
+    def get_buckets_list(self) -> list[Bucket]:
+        """
+        Retrieves the list of all available buckets in the Minio server.
+
+        This method returns a list of Bucket objects representing all the buckets available.
+
+        Returns:
+            list[Bucket]: A list of Bucket objects.
+        """
+        return self.client.list_buckets()
+
+    def get_objects_list(
+        self,
+        *,
+        bucket_name: str | None = None,
+        prefix: str | None = None,
+        recursive: bool = False,
+    ) -> Iterator[Object]:
+        """
+        Retrieves a list of objects in the specified bucket on Minio.
+
+        This method allows you to list objects in a specific bucket, with optional filtering by prefix and recursion.
+
+        Args:
+            bucket_name (Optional[str], optional): The name of the bucket. Defaults to None (uses default bucket).
+            prefix (Optional[str], optional): A prefix filter for the object names. Defaults to None.
+            recursive (bool, optional): List recursively than directory structure emulation. Defaults to False.
+
+        Returns:
+            Iterator[Object]: An iterator over the objects in the bucket matching the provided parameters.
+        """
+        bucket_name = bucket_name or self.bucket_name
+        return self.client.list_objects(bucket_name=bucket_name, prefix=prefix, recursive=recursive)
+
 
 if __name__ == "__main__":
     _endpoint = "localhost:9000"
-    _access_key = "NkrNxZ6xgBPwNJQKLC1D"
-    _secret_key = "9CE45VMwSd6DcHvVijQGj3fwSkX0uMOcbwxgs1Ue"
+    _access_key = "root"
+    _secret_key = "12345678"
     _bucket_name = "test-bucket"
     client = MinioClient(_endpoint, access_key=_access_key, secret_key=_secret_key, bucket_name=_bucket_name)
-    print(client.presigned_put_url("123", upload_part={"part_number": "1", "upload_id": "123"}))
+    path = "/home/coke/PythonProject/Async-FastAPI-MultiDB/Dockerfile"
+    for item in client.get_objects_list():
+        print(item)
