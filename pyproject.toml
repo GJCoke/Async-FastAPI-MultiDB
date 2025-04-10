@@ -30,7 +30,9 @@ dependencies = [
     "asyncpg==0.30.0",
     "alembic==1.15.1",
     "beanie==1.29.0",
-    "minio==7.2.15"
+    "minio==7.2.15",
+    # Celery
+    "celery==5.5.1"
 ]
 
 [project.optional-dependencies]

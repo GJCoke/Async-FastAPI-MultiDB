@@ -29,6 +29,18 @@ class Config(BaseSettings):
     POSTGRESQL_PORT: int = Field(5432, ge=0, le=65535)
     POSTGRESQL_DATABASE: str
 
+    @property
+    def DATABASE_POSTGRESQL_URL(self) -> PostgresDsn:
+        """Generate and return the postgresql connection URL."""
+        return PostgresDsn.build(
+            scheme=self.POSTGRESQL_SCHEME,
+            username=self.POSTGRESQL_USERNAME,
+            password=self.POSTGRESQL_PASSWORD.get_secret_value(),
+            host=self.POSTGRESQL_HOST,
+            port=self.POSTGRESQL_PORT,
+            path=self.POSTGRESQL_DATABASE,
+        )
+
     # Redis configuration settings
     REDIS_SCHEME: str = "redis"
     REDIS_MAX_CONNECTIONS: int = 10
@@ -38,6 +50,33 @@ class Config(BaseSettings):
     REDIS_PORT: int = Field(6379, ge=0, le=65535)
     REDIS_DATABASE: int = Field(0, ge=0, le=15)
 
+    @property
+    def REDIS_URL(self) -> RedisDsn:
+        """Generate and return the Redis connection URL."""
+        return RedisDsn.build(
+            scheme=self.REDIS_SCHEME,
+            username=self.REDIS_ROOT_USERNAME,
+            password=self.REDIS_ROOT_PASSWORD.get_secret_value(),
+            host=self.REDIS_HOST,
+            port=self.REDIS_PORT,
+            path=str(self.REDIS_DATABASE),
+        )
+
+    CELERY_REDIS_DATABASE: int = Field(1, ge=0, le=15)
+
+    @property
+    def CELERY_REDIS_URL(self) -> RedisDsn:
+        """Generate and return the Celery Redis connection URL."""
+
+        return RedisDsn.build(
+            scheme=self.REDIS_SCHEME,
+            username=self.REDIS_ROOT_USERNAME,
+            password=self.REDIS_ROOT_PASSWORD.get_secret_value(),
+            host=self.REDIS_HOST,
+            port=self.REDIS_PORT,
+            path=str(self.CELERY_REDIS_DATABASE),
+        )
+
     # MongoDB configuration settings
     MONGO_SCHEME: str
     MONGO_INITDB_ROOT_USERNAME: str
@@ -45,6 +84,17 @@ class Config(BaseSettings):
     MONGO_HOST: str
     MONGO_PORT: int = Field(27017, ge=0, le=65535)
     MONGO_INITDB_DATABASE: str
+
+    @property
+    def DATABASE_MONGO_URL(self) -> MongoDsn:
+        """Generate and return the MongoDB connection URL."""
+        return MongoDsn.build(
+            scheme=self.MONGO_SCHEME,
+            username=self.MONGO_INITDB_ROOT_USERNAME,
+            password=self.MONGO_INITDB_ROOT_PASSWORD.get_secret_value(),
+            host=self.MONGO_HOST,
+            port=self.MONGO_PORT,
+        )
 
     # Minio configuration settings
     MINIO_ROOT_USER: str
@@ -66,43 +116,8 @@ class Config(BaseSettings):
     # Logging level
     LOG_LEVEL: str = "INFO"
 
-    @property
-    def DATABASE_POSTGRESQL_URL(self) -> PostgresDsn:
-        """Generate and return the postgresql connection URL."""
-        return PostgresDsn.build(
-            scheme=self.POSTGRESQL_SCHEME,
-            username=self.POSTGRESQL_USERNAME,
-            password=self.POSTGRESQL_PASSWORD.get_secret_value(),
-            host=self.POSTGRESQL_HOST,
-            port=self.POSTGRESQL_PORT,
-            path=f"/{self.POSTGRESQL_DATABASE}",
-        )
 
-    @property
-    def DATABASE_MONGO_URL(self) -> MongoDsn:
-        """Generate and return the MongoDB connection URL."""
-        return MongoDsn.build(
-            scheme=self.MONGO_SCHEME,
-            username=self.MONGO_INITDB_ROOT_USERNAME,
-            password=self.MONGO_INITDB_ROOT_PASSWORD.get_secret_value(),
-            host=self.MONGO_HOST,
-            port=self.MONGO_PORT,
-        )
-
-    @property
-    def REDIS_URL(self) -> RedisDsn:
-        """Generate and return the Redis connection URL."""
-        return RedisDsn.build(
-            scheme=self.REDIS_SCHEME,
-            username=self.REDIS_ROOT_USERNAME,
-            password=self.REDIS_ROOT_PASSWORD.get_secret_value(),
-            host=self.REDIS_HOST,
-            port=self.REDIS_PORT,
-            path=f"/{self.REDIS_DATABASE}",
-        )
-
-
-settings = Config()
+settings = Config()  # type: ignore
 app_configs: dict[str, Any] = {"title": "FastAPI MultiDB"}
 
 # Disable the OpenAPI documentation in non-debug environments

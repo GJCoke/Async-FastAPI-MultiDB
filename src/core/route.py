@@ -7,14 +7,11 @@ Author : Coke
 Date   : 2025-03-12
 """
 
-import logging
 from typing import Any
 
 from fastapi.routing import APIRoute
 
 from src.schemas.response import RESPONSES
-
-logger = logging.getLogger(__name__)
 
 
 class BaseRoute(APIRoute):
