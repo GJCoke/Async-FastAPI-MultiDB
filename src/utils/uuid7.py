@@ -11,6 +11,8 @@ import time
 import uuid
 from typing import Optional, Tuple
 
+from pydantic import UUID1
+
 
 class UUID(uuid.UUID):
     """
@@ -18,10 +20,6 @@ class UUID(uuid.UUID):
 
     This class allows creation of UUID objects for versions 6, 7, and 8 as defined
     in RFC 9562. It provides properties to handle time and subsecond information.
-
-    Attributes:
-        subsec: The subsecond value encoded in the UUID.
-        time: The timestamp associated with the UUID, depending on the version.
 
     Args:
         hex (str, optional): The hexadecimal representation of the UUID.
@@ -65,7 +63,7 @@ class UUID(uuid.UUID):
             ValueError: If the integer is out of range or if the version is not 6, 7, or 8.
         """
         if int is None or [hex, bytes, bytes_le, fields].count(None) != 4:
-            return super().__init__(
+            super().__init__(
                 hex=hex,
                 bytes=bytes,
                 bytes_le=bytes_le,
@@ -74,6 +72,7 @@ class UUID(uuid.UUID):
                 version=version,
                 is_safe=is_safe,
             )
+            return
         if not 0 <= int < 1 << 128:
             raise ValueError("int is out of range (need a 128-bit value)")
         if version is not None:
@@ -112,6 +111,18 @@ class UUID(uuid.UUID):
         if self.version == 8:
             return (self.int >> 80) * 10**6 + _subsec_decode(self.subsec)
         return super().time
+
+
+class UUID6(UUID1):
+    _required_version = 6
+
+
+class UUID7(UUID1):
+    _required_version = 7
+
+
+class UUID8(UUID1):
+    _required_version = 8
 
 
 def _subsec_decode(value: int) -> int:

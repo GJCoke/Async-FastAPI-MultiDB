@@ -7,6 +7,7 @@ from sqlmodel import SQLModel
 from alembic import context
 from src.core.config import settings
 from src.models import *  # noqa: F403
+from src.queues.models import *  # noqa: F403  TODO: delete.
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

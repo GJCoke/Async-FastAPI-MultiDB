@@ -63,6 +63,7 @@ class Config(BaseSettings):
         )
 
     CELERY_REDIS_DATABASE: int = Field(1, ge=0, le=15)
+    CELERY_TIMEZONE: str = "Asia/Shanghai"
 
     @property
     def CELERY_REDIS_URL(self) -> RedisDsn:

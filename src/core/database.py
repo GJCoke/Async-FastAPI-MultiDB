@@ -49,11 +49,13 @@ class RedisManager:
     and client is used throughout the application.
     """
 
-    _pool: ConnectionPool | None = None
-    _client: Redis | None = None
+    _pools: dict[str, ConnectionPool] = {}
+    _clients: dict[str, Redis] = {}
 
     @classmethod
-    def connect(cls) -> ConnectionPool:
+    def connect(
+        cls, *, redis_url: str | None = None, pool_name: str = "default", max_connections: int | None = None
+    ) -> ConnectionPool:
         """
         Initializes the Redis connection pool if it has not been initialized yet.
 
@@ -63,25 +65,27 @@ class RedisManager:
         Raises:
             RuntimeError: If Redis connection fails.
         """
-        if cls._pool is None:
-            cls._pool = ConnectionPool.from_url(
-                REDIS_URL, max_connections=settings.REDIS_MAX_CONNECTIONS, decode_responses=True
-            )
-            cls._client = Redis(connection_pool=cls._pool)
-        logger.info("Redis connection pool initialization completed.")
-        return cls._pool
+        redis_url = redis_url or REDIS_URL
+        max_connections = max_connections or settings.REDIS_MAX_CONNECTIONS
+        if pool_name not in cls._pools:
+            pool = ConnectionPool.from_url(redis_url, max_connections=max_connections, decode_responses=True)
+            cls._pools[pool_name] = pool
+            cls._clients[pool_name] = Redis(connection_pool=pool)
+            logger.info(f'Redis connection pool for "{pool_name}" initialization completed.')
+
+        return cls._pools[pool_name]
 
     @classmethod
-    async def close(cls) -> None:
+    async def close(cls, pool_name: str = "default") -> None:
         """Closes the Redis connection pool and client."""
-        if cls._pool:
-            await cls._pool.disconnect()
-            logger.info("Redis connection pool disconnect completed.")
-            cls._pool = None
-            cls._client = None
+        if pool_name in cls._pools:
+            await cls._pools[pool_name].disconnect()
+            logger.info(f'Redis connection pool for "{pool_name}" disconnect completed.')
+            del cls._pools[pool_name]
+            del cls._pools[pool_name]
 
     @classmethod
-    def client(cls) -> Redis:
+    def client(cls, pool_name: str = "default") -> Redis:
         """
         Returns the initialized Redis client.
 
@@ -94,9 +98,9 @@ class RedisManager:
         Raises:
             RuntimeError: If the Redis client is not initialized.
         """
-        if cls._client is None:
-            raise RuntimeError("Redis client not initialized.")
-        return cls._client
+        if pool_name not in cls._clients:
+            raise RuntimeError(f'Redis client for pool "{pool_name}" not initialized.')
+        return cls._clients[pool_name]
 
 
 class AsyncRedisClient:

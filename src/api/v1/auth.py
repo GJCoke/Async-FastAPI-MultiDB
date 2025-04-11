@@ -12,13 +12,14 @@ from uuid import UUID
 
 from beanie import PydanticObjectId
 from fastapi import APIRouter
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.core.config import settings
 from src.core.route import BaseRoute
-from src.deps.database import MongoTestDep, SessionDep, SQLTestDep
+from src.deps.database import SessionDep
 from src.models.test import Test as TestModel
 from src.models.test import testCrud
+from src.queues.models import IntervalSchedule, Period, PeriodicTask, TaskType
 from src.schemas.base import BaseModel
 from src.schemas.response import Response
 
@@ -32,32 +33,24 @@ class Test(BaseModel):
 
 
 @router.post("/login/{user_id}")
-async def login(mongo: MongoTestDep, name: str, crud: SQLTestDep) -> Response[Any]:
-    # crud = testCrud
+async def login(session: SessionDep) -> Response[Any]:
+    interval = IntervalSchedule(every=10, period=Period.DAYS)
+    session.add(interval)
+    task = PeriodicTask(
+        name="test",
+        task="src.queues.tasks.test",
+        task_type=TaskType.INTERVAL,
+        schedule_id=interval.id,
+    )
+    session.add(task)
+    await session.commit()
+    return Response(data=None)
 
-    # await redis.set("test", "vvvvvvvv")
-    # await redis.get("cccc")
-    # test = TestDocument(name="12345")
-    # await test.insert()
-    # test = await TestDocument.find_one(TestDocument.name == "12345")
-    # test.desc_test = "running me111111!"
-    # await test.save()
-    # info = await TestDocument.find_all().to_list()
-    # result = await redis.exists("test", "ccc")
-    _sql = await crud.get_all()
 
-    _mongo = await mongo.create({"name": name})
-    # test1 = await mongo.get(PydanticObjectId("67e949583be5692177c22766"), nullable=False)
-    # test = await mongo.get_all()
-    # test_all = []
-    # for item in test:
-    #     test_all.append(Test.model_validate(item.model_dump()))
-
-    # _id = PydanticObjectId("67ea02faad4c83746bc652d0")
-    # print(_id, "asdasdsa")
-    # test_all = await mongo.get_by_ids([_id])
-
-    return Response(data={"mongo_a": settings.DATABASE_MONGO_URL, "sql": _sql, "mongo": _mongo})
+@router.get("/celery")
+async def __test_celery(session: SessionDep) -> Response[Any]:
+    data = await session.exec(select(PeriodicTask))
+    return Response(data=data.all())
 
 
 @router.post("/add/test")

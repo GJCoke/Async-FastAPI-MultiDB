@@ -11,6 +11,7 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI
 
+from src.core.config import settings
 from src.core.database import MongoManager, RedisManager
 
 logger = logging.getLogger("app")
@@ -24,10 +25,12 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         _app: FastAPI application.
     """
     RedisManager.connect()
+    RedisManager.connect(redis_url=str(settings.CELERY_REDIS_URL), pool_name="celery")
     await MongoManager.connect()
     logger.info("Application startup complete.")
     yield
 
     await RedisManager.close()
+    await RedisManager.close("celery")
     MongoManager.close()
     logger.info("Application shutdown complete.")

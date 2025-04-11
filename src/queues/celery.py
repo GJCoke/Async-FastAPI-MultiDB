@@ -20,6 +20,7 @@ TaskType = TypeVar("TaskType", bound=Task)
 class Celery(_Celery):
     """Custom Celery."""
 
+    # TODO: Argument 1 to "task" of "Celery" has incompatible type "Callable[[], None]"; expected "tuple[Any, ...]"
     def task(
         self,
         *args: tuple[Any, ...],
@@ -317,7 +318,7 @@ class Celery(_Celery):
             ),
         ] = False,
         autoretry_for: Annotated[
-            tuple[type[Exception]] | None,
+            tuple[type[Exception]],
             Doc(
                 """
                 autoretry_for: This option is used to define a list of exceptions that,
@@ -325,7 +326,7 @@ class Celery(_Celery):
                 The task will attempt to execute again without you needing to manually invoke the retry logic.
                 """
             ),
-        ] = None,
+        ] = (),  # type: ignore
         retry_backoff: Annotated[
             bool,
             Doc(
@@ -336,14 +337,14 @@ class Celery(_Celery):
             ),
         ] = False,
         retry_backoff_max: Annotated[
-            int | None,
+            int,
             Doc(
                 """
                 retry_backoff_max: This is an optional setting that defines the maximum retry delay.
                 Even with exponential backoff, the retry delay will not exceed this value.
                 """
             ),
-        ] = None,
+        ] = 600,
         queue: Annotated[
             str | None,
             Doc(
