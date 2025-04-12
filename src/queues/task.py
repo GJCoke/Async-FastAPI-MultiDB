@@ -13,6 +13,9 @@ from datetime import datetime, timedelta
 from typing import Any, Iterable
 
 from celery import Task as _Task
+
+# noinspection PyProtectedMember
+from celery._state import _task_stack
 from celery.app.routes import Router
 from celery.canvas import Signature
 from celery.result import AsyncResult
@@ -330,6 +333,9 @@ class Task(_Task):
                        after calling `on_failure()`.
         """
 
+        _task_stack.push(self)
+        self.push_request(args=args, kwargs=kwargs)
+
         try:
             # Call the original run() method with provided arguments.
             result = self.run(*args, **kwargs)
@@ -348,7 +354,6 @@ class Task(_Task):
             # If result is not a coroutine, return it directly
             return result
 
-        except Exception as e:
-            # If an exception occurs, trigger failure callback and re-raise
-            self.on_failure(e, *args, **kwargs)
-            raise
+        finally:
+            self.pop_request()
+            _task_stack.pop()
