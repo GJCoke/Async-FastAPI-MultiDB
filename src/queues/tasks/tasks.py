@@ -18,7 +18,7 @@ async def test_celery() -> None:  # TODO: this is delete code.
     # time.sleep(random_number)
     await asyncio.sleep(random_number)
 
-    async def test_async():
+    async def test_async() -> None:
         print("start async task ...")
         print(f"async task run {random_number}s.")
         await asyncio.sleep(random_number)

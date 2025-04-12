@@ -20,4 +20,5 @@ repos:
       - id: mypy
         additional_dependencies:
           - types-toml
+          - pydantic
         exclude: ^tests/
