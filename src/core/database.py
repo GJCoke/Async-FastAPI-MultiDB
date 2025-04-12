@@ -11,8 +11,10 @@ Date   : 2025-03-17
 import importlib
 import logging
 import pkgutil
+from abc import ABC, abstractmethod
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -40,7 +42,21 @@ AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_co
 REDIS_URL = str(settings.REDIS_URL)
 
 
-class RedisManager:
+class BaseManager(ABC):
+    @classmethod
+    @abstractmethod
+    def connect(cls) -> Any: ...
+
+    @classmethod
+    @abstractmethod
+    def disconnect(cls) -> Any: ...
+
+    @classmethod
+    @abstractmethod
+    def client(cls) -> Any: ...
+
+
+class RedisManager(BaseManager):
     """
     A class to manage Redis connection pool and client.
 
@@ -76,13 +92,19 @@ class RedisManager:
         return cls._pools[pool_name]
 
     @classmethod
-    async def close(cls, pool_name: str = "default") -> None:
+    async def disconnect(cls, pool_name: str = "default") -> None:
         """Closes the Redis connection pool and client."""
         if pool_name in cls._pools:
             await cls._pools[pool_name].disconnect()
             logger.info(f'Redis connection pool for "{pool_name}" disconnect completed.')
             del cls._pools[pool_name]
-            del cls._pools[pool_name]
+            del cls._clients[pool_name]
+
+    @classmethod
+    async def clear(cls) -> None:
+        """Clears the Redis connection pool and client."""
+        if cls._clients:
+            cls._clients.clear()
 
     @classmethod
     def client(cls, pool_name: str = "default") -> Redis:
@@ -263,7 +285,7 @@ def get_document_models() -> list[type[Document]]:
     return document_models
 
 
-class MongoManager:
+class MongoManager(BaseManager):
     """
     Manages MongoDB connections, providing methods for connection, disconnection, and client retrieval.
 
@@ -292,7 +314,7 @@ class MongoManager:
         logger.info("Mongo connection initialization completed.")
 
     @classmethod
-    def close(cls) -> None:
+    def disconnect(cls) -> None:
         """
         Closes the MongoDB connection.
 

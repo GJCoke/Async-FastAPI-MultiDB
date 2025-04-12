@@ -30,7 +30,6 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     logger.info("Application startup complete.")
     yield
 
-    await RedisManager.close()
-    await RedisManager.close("celery")
-    MongoManager.close()
+    await RedisManager.clear()
+    MongoManager.disconnect()
     logger.info("Application shutdown complete.")
