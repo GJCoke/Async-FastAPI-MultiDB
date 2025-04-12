@@ -20,7 +20,7 @@ dependencies = [
     "cryptography==43.0.3",
     # Python Type
     "pydantic-settings==2.8.1",
-    "pydantic[email]==2.10.6",
+    "pydantic[email]==2.11.3",
     "sqlmodel==0.0.24",
     # Socket
     "python-socketio==5.12.1",
@@ -28,7 +28,7 @@ dependencies = [
     # Database
     "redis==5.2.1",
     "asyncpg==0.30.0",
-    "alembic==1.15.1",
+    "alembic==1.15.2",
     "beanie==1.29.0",
     "minio==7.2.15",
     # Celery
@@ -37,7 +37,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "ruff==0.9.10",
+    "ruff==0.11.4",
     "mypy==1.15.0",
     "pre-commit==4.2.0"
 ]
