@@ -28,6 +28,7 @@ class UploadPart(BaseModel):
     upload_id: str
 
 
+# noinspection PyProtectedMember
 class MinioClient:
     """MinioClient class to interact with the Minio(S3) object storage service."""
 

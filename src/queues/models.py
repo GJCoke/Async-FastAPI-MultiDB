@@ -1,4 +1,6 @@
 """
+Celery Periodic Task Models.
+
 Author  : Coke
 Date    : 2025-04-10
 """
@@ -11,6 +13,7 @@ from uuid import UUID
 from celery.schedules import crontab as Crontab
 from celery.schedules import schedule as Schedule
 from celery.schedules import solar as Solar
+from pydantic import BaseModel
 from sqlmodel import JSON, Column, Field
 
 from src.models.base import SQLModel
@@ -113,7 +116,7 @@ class TaskType(Enum):
         return self._model_
 
 
-class RetryPolicy(SQLModel):
+class RetryPolicy(BaseModel):
     """
     Represents the retry policy for a task, based on Celery's retry configuration.
 
@@ -138,7 +141,7 @@ class RetryPolicy(SQLModel):
     interval_max: int | None = None
 
 
-class Options(SQLModel):
+class Options(BaseModel):
     """
     Options for configuring Celery task scheduling, similar to Celery's beat options.
 

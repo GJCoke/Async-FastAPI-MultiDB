@@ -1,29 +1,34 @@
 """
+Celery.
+
 Author  : Coke
 Date    : 2025-04-10
 """
 
-from typing import Any, TypeVar
+from typing import Any
 
 from celery import Celery as _Celery
-from celery import Task
 from typing_extensions import Annotated, Doc
+
+from src.queues.task import Task
 
 MINUTES = 60
 HOURS = 60 * MINUTES
 DAYS = 24 * HOURS
 WEEKDAYS = 7 * DAYS
 
-TaskType = TypeVar("TaskType", bound=Task)
-
 
 class Celery(_Celery):
-    """Custom Celery."""
+    """
+    Custom Celery.
 
-    # TODO: Argument 1 to "task" of "Celery" has incompatible type "Callable[[], None]"; expected "tuple[Any, ...]"
+    This code simply improves IDE type hints for Celery and adds support for async def functions
+    by converting asynchronous functions into synchronous execution using asyncio.
+    """
+
     def task(
         self,
-        *args: tuple[Any, ...],
+        *args: Any,
         name: Annotated[
             str | None,
             Doc(
@@ -43,7 +48,7 @@ class Celery(_Celery):
             ),
         ] = None,
         base: Annotated[
-            type[TaskType] | None,
+            type[Task],
             Doc(
                 """
                 The base parameter is used to specify the base class for the task. By default,
@@ -64,7 +69,7 @@ class Celery(_Celery):
                         raise KeyError()
                 """
             ),
-        ] = None,
+        ] = Task,
         bind: Annotated[
             bool,
             Doc(
@@ -383,8 +388,17 @@ class Celery(_Celery):
                 """
             ),
         ] = False,
-        **kwargs: dict[str, Any],
-    ) -> type[TaskType]:
+        **kwargs: Annotated[
+            dict[str, Any],
+            Doc(
+                """
+                Celery kwargs.
+                """
+            ),
+        ],
+    ) -> type[Task]:
+        # Added common parameters and corresponding annotations for Celery tasks, and by
+        # default inherited from the Task class to support async def asynchronous function execution.
         return super().task(
             *args,
             name=name,
