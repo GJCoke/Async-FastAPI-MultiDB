@@ -5,6 +5,7 @@ Author  : Coke
 Date    : 2025-04-10
 """
 
+from abc import abstractmethod
 from datetime import timedelta
 from enum import Enum
 from typing import Any
@@ -45,7 +46,20 @@ class SolarEvent(Enum):
     DUSK_ASTRONOMICAL = "dusk_astronomical"
 
 
-class IntervalSchedule(SQLModel, table=True):
+class BaseSchedule(SQLModel):
+    """
+    Base schedule model.
+
+    To improve code type inference in IDEs such as VSCode or PyCharm,
+    custom scheduler classes that inherit from Scheduler should explicitly implement the schedule property.
+    """
+
+    @property
+    @abstractmethod
+    def schedule(self) -> Any: ...
+
+
+class IntervalSchedule(BaseSchedule, table=True):
     """Celery Interval Schedule model."""
 
     __tablename__ = "celery_interval_schedule"
@@ -60,7 +74,7 @@ class IntervalSchedule(SQLModel, table=True):
         )
 
 
-class CrontabSchedule(SQLModel, table=True):
+class CrontabSchedule(BaseSchedule, table=True):
     """Celery Crontab Schedule model."""
 
     __tablename__ = "celery_crontab_schedule"
@@ -82,7 +96,7 @@ class CrontabSchedule(SQLModel, table=True):
         )
 
 
-class SolarSchedule(SQLModel, table=True):
+class SolarSchedule(BaseSchedule, table=True):
     """Celery Solar Schedule model."""
 
     __tablename__ = "celery_solar_schedule"
@@ -107,12 +121,12 @@ class TaskType(Enum):
     CRONTAB = ("crontab", CrontabSchedule)
     SOLAR = ("solar", SolarSchedule)
 
-    def __init__(self, value: str, model: type[SQLModel]):
+    def __init__(self, value: str, model: type[BaseSchedule]):
         self._value_ = value
         self._model_ = model
 
     @property
-    def model(self) -> type[SQLModel]:
+    def model(self) -> type[BaseSchedule]:
         return self._model_
 
 

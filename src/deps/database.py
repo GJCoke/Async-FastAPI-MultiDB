@@ -5,27 +5,19 @@ Author : Coke
 Date   : 2025-03-29
 """
 
-from typing import Annotated, AsyncIterator
+from typing import Annotated
 
 from fastapi import Depends
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.config import settings
-from src.core.database import AsyncRedisClient, AsyncSessionLocal, RedisManager
+from src.core.database import AsyncRedisClient, RedisManager, get_async_session
 from src.crud.base import BaseBeanieCRUD, BaseSQLModelCRUD
 from src.models.test import Test, TestDocument
 
-
-# Dependency function that yields a database session to be used in FastAPI route handlers.
-# The 'AsyncSessionLocal' session maker is used to create a session for each request.
-async def get_db() -> AsyncIterator[AsyncSession]:
-    async with AsyncSessionLocal() as session:
-        yield session
-
-
 # Type alias for the database session dependency.
 # def login(session: SessionDep):
-SessionDep = Annotated[AsyncSession, Depends(get_db)]
+SessionDep = Annotated[AsyncSession, Depends(get_async_session)]
 
 
 async def get_redis_client() -> AsyncRedisClient:

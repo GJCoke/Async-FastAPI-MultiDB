@@ -1,10 +1,11 @@
 import asyncio
 from logging.config import fileConfig
 
+from sqlalchemy.engine.base import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import SQLModel
 
-from alembic import context
+from alembic import context  # type: ignore
 from src.core.config import settings
 from src.models import *  # noqa: F403
 from src.queues.models import *  # noqa: F403  TODO: delete.
@@ -29,7 +30,7 @@ target_metadata = SQLModel.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-DATABASE_URL = str(settings.DATABASE_POSTGRESQL_URL)
+DATABASE_URL = str(settings.ASYNC_DATABASE_POSTGRESQL_URL)
 
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 config.compare_type = True
@@ -60,7 +61,7 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection):
+def do_run_migrations(connection: Connection | None) -> None:
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():

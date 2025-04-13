@@ -15,13 +15,9 @@ app.conf.update({"timezone": settings.CELERY_TIMEZONE})
 app.autodiscover_tasks(["src.queues.tasks"])
 
 # TODO: this is delete code.
-app.conf.update(
-    {
-        "beat_schedule": {
-            "test_beat_task": {
-                "task": "src.queues.tasks.tasks.test_celery",
-                "schedule": 10,
-            }
-        }
+app.conf.beat_schedule = {
+    "test_task2": {
+        "task": "src.queues.tasks.tasks.test_task2",
+        "schedule": 15,
     }
-)
+}

@@ -26,3 +26,12 @@ async def test_celery() -> None:  # TODO: this is delete code.
     await test_async()
 
     print("task done.")
+
+
+@app.task
+async def test_task2() -> None:
+    print("start test_task2 ...")
+
+    await asyncio.sleep(3)
+
+    print("test_task2 done.")

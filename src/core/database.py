@@ -8,19 +8,21 @@ Author : Coke
 Date   : 2025-03-17
 """
 
+import asyncio
 import importlib
 import logging
 import pkgutil
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, AsyncIterator, Iterator
 
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 from redis.asyncio import ConnectionPool, Redis
 from redis.typing import EncodableT, KeyT
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlmodel import Session, create_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src import models
@@ -28,18 +30,47 @@ from src.core.config import settings
 from src.models.base import Document
 
 logger = logging.getLogger("app")
-DATABASE_URL = str(settings.DATABASE_POSTGRESQL_URL)
+ASYNC_DATABASE_URL = str(settings.ASYNC_DATABASE_POSTGRESQL_URL)
+SYNC_DATABASE_URL = str(settings.SYNC_DATABASE_POSTGRESQL_URL)
+REDIS_URL = str(settings.REDIS_URL)
 
-# Create an asynchronous SQLAlchemy engine for PostgreSQL connection.
+# Create an 'async and sync' SQLAlchemy engine for PostgreSQL connection.
 # The 'echo' parameter is set based on the environment debug flag,
 # and 'pool_recycle' ensures that database connections are recycled after 60 seconds.
-engine = create_async_engine(DATABASE_URL, echo=settings.ENVIRONMENT.is_debug, pool_recycle=60)
+async_engine = create_async_engine(ASYNC_DATABASE_URL, echo=settings.ENVIRONMENT.is_debug, pool_recycle=60)
+sync_engine = create_engine(SYNC_DATABASE_URL, echo=settings.ENVIRONMENT.is_debug, pool_recycle=60)
 
 # AsyncSessionLocal is the session maker used to create AsyncSession instances.
 # 'expire_on_commit=False' prevents SQLAlchemy from automatically expiring objects after commit.
-AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+AsyncSessionLocal = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
 
-REDIS_URL = str(settings.REDIS_URL)
+
+async def get_async_session() -> AsyncIterator[AsyncSession]:
+    """
+    Provides an asynchronous database session.
+
+    This function yields a SQLAlchemy AsyncSession object using an async context manager.
+    Typically used as a dependency in FastAPI routes with asynchronous handlers.
+
+    Yields:
+        AsyncSession: An asynchronous SQLAlchemy session instance.
+    """
+    async with AsyncSessionLocal() as session:
+        yield session
+
+
+def get_sync_session() -> Iterator[Session]:
+    """
+    Provides a synchronous database session.
+
+    This function yields a SQLAlchemy Session object using a standard context manager.
+    Suitable for synchronous interfaces or tasks that require database access.
+
+    Yields:
+        Session: A synchronous SQLAlchemy session instance.
+    """
+    with Session(sync_engine) as session:
+        yield session
 
 
 class BaseManager(ABC):
@@ -104,6 +135,8 @@ class RedisManager(BaseManager):
     async def clear(cls) -> None:
         """Clears the Redis connection pool and client."""
         if cls._clients:
+            await asyncio.gather(*(pool.disconnect() for pool in cls._pools.values()))
+            cls._pools.clear()
             cls._clients.clear()
 
     @classmethod

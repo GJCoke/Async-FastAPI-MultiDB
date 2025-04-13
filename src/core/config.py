@@ -22,7 +22,8 @@ class Config(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     # PostgreSQL configuration settings
-    POSTGRESQL_SCHEME: str
+    POSTGRESQL_ASYNC_SCHEME: str
+    POSTGRESQL_SYNC_SCHEME: str
     POSTGRESQL_USERNAME: str
     POSTGRESQL_PASSWORD: Secret[str]
     POSTGRESQL_HOST: str
@@ -30,10 +31,22 @@ class Config(BaseSettings):
     POSTGRESQL_DATABASE: str
 
     @property
-    def DATABASE_POSTGRESQL_URL(self) -> PostgresDsn:
+    def ASYNC_DATABASE_POSTGRESQL_URL(self) -> PostgresDsn:
         """Generate and return the postgresql connection URL."""
         return PostgresDsn.build(
-            scheme=self.POSTGRESQL_SCHEME,
+            scheme=self.POSTGRESQL_ASYNC_SCHEME,
+            username=self.POSTGRESQL_USERNAME,
+            password=self.POSTGRESQL_PASSWORD.get_secret_value(),
+            host=self.POSTGRESQL_HOST,
+            port=self.POSTGRESQL_PORT,
+            path=self.POSTGRESQL_DATABASE,
+        )
+
+    @property
+    def SYNC_DATABASE_POSTGRESQL_URL(self) -> PostgresDsn:
+        """Generate and return the postgresql connection URL."""
+        return PostgresDsn.build(
+            scheme=self.POSTGRESQL_SYNC_SCHEME,
             username=self.POSTGRESQL_USERNAME,
             password=self.POSTGRESQL_PASSWORD.get_secret_value(),
             host=self.POSTGRESQL_HOST,

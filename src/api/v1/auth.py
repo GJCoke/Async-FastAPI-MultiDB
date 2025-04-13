@@ -34,11 +34,11 @@ class Test(BaseModel):
 
 @router.post("/login/{user_id}")
 async def login(session: SessionDep) -> Response[Any]:
-    interval = IntervalSchedule(every=10, period=Period.DAYS)
+    interval = IntervalSchedule(every=10, period=Period.SECONDS)
     session.add(interval)
     task = PeriodicTask(
-        name="test",
-        task="src.queues.tasks.test",
+        name="test_celery",
+        task="src.queues.tasks.tasks.test_celery",
         task_type=TaskType.INTERVAL,
         schedule_id=interval.id,
     )

@@ -27,7 +27,10 @@ dependencies = [
     "websocket-client==1.8.0",
     # Database
     "redis==5.2.1",
+    # In theory, psycopg alone is sufficient to handle both synchronous and asynchronous connections.
+    # However, asyncpg typically offers better performance in asynchronous scenarios.
     "asyncpg==0.30.0",
+    "psycopg[binary,pool]==3.2.6",
     "alembic==1.15.2",
     "beanie==1.29.0",
     "minio==7.2.15",
