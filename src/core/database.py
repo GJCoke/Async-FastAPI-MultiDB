@@ -22,6 +22,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from redis.asyncio import ConnectionPool, Redis
 from redis.typing import EncodableT, KeyT
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.orm import sessionmaker
 from sqlmodel import Session, create_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -43,6 +44,7 @@ sync_engine = create_engine(SYNC_DATABASE_URL, echo=settings.ENVIRONMENT.is_debu
 # AsyncSessionLocal is the session maker used to create AsyncSession instances.
 # 'expire_on_commit=False' prevents SQLAlchemy from automatically expiring objects after commit.
 AsyncSessionLocal = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
+SyncSessionLocal = sessionmaker(sync_engine, class_=Session, expire_on_commit=False)
 
 
 async def get_async_session() -> AsyncIterator[AsyncSession]:
@@ -69,7 +71,7 @@ def get_sync_session() -> Iterator[Session]:
     Yields:
         Session: A synchronous SQLAlchemy session instance.
     """
-    with Session(sync_engine) as session:
+    with SyncSessionLocal() as session:
         yield session
 
 
