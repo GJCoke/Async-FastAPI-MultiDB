@@ -16,7 +16,7 @@ Async-FastAPI-MultiDB 是一个异步 FastAPI 模板项目，旨在无缝集成 
   - 本项目封装了一些常用的 S3 接口功能，例如：获取预签名上传链接、支持分块上传、生成下载地址、获取存储桶信息等。
   - 更多细节请参考 `src.utils.minio_client.py` 文件中的实现。
 - **Celery 增强功能（[更多详情](#celery)）：**
-  - 数据库动态调度（类似 `django-celery-beat`，但框架无关）
+  - 数据库动态调度（类似 `django-celery-beat`，但与框架无关）
   - 异步任务原生支持（自动兼容 `async def` 函数）
   - 更友好的 IDE 类型提示（改善开发体验)
 
