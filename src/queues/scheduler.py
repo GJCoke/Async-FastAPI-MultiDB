@@ -40,7 +40,7 @@ class Scheduler(_Scheduler):
         self,
         app: Celery,
         *,
-        refresh_interval: float | None = None,
+        refresh_interval: bool | float = False,
         schedule: dict[str, ScheduleEntry] | None = None,
         max_interval: int | None = None,
         producer: type[Producer] | None = None,
@@ -57,7 +57,7 @@ class Scheduler(_Scheduler):
             sync_every_tasks=sync_every_tasks,
             **kwargs,
         )
-        self.refresh_interval = refresh_interval or self.app.conf.get("refresh_interval") or 60
+        self.refresh_interval = refresh_interval or self.app.conf.get("refresh_interval")
         logger.info(f"Synchronize database tasks every {self.refresh_interval} seconds.")
         self.last_updated = datetime.now(UTC)
 
@@ -127,7 +127,7 @@ class Scheduler(_Scheduler):
         """
 
         now = datetime.now(UTC)
-        if (now - self.last_updated) > timedelta(seconds=self.refresh_interval):
+        if self.refresh_interval and (now - self.last_updated) > timedelta(seconds=self.refresh_interval):
             # TODO: The current implementation updates all tasks,
             #  but it should only update tasks that already exist in the database.
             self.setup_schedule()

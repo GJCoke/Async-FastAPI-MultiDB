@@ -11,6 +11,16 @@ Async-FastAPI-MultiDB 是一个异步 FastAPI 模板项目，旨在无缝集成 
 - **模块化设计：** 采用清晰的项目结构，将路由、模型、服务层、数据库操作等功能解耦，便于维护和扩展，可适应大型项目开发。
 - **自动文档生成：** 利用 FastAPI 内置功能自动生成 API 文档。
 - **基于环境的配置管理：** 简化不同环境下的配置切换。
+- **对象存储系统 MinIO：** MinIO 是一个开源的分布式对象存储系统，兼容 Amazon S3 API，支持通过 S3 协议与国内云服务（如阿里云、腾讯云）进行集成。
+  - 如果你曾使用 boto3，推荐切换到 MinIO 提供的 Python SDK，它更加现代、智能，并且优化了性能和易用性。
+  - 本项目封装了一些常用的 S3 接口功能，例如：获取预签名上传链接、支持分块上传、生成下载地址、获取存储桶信息等。
+  - 更多细节请参考 `src.utils.minio_client.py` 文件中的实现。
+- **Celery 增强功能（[更多详情](#celery)）：**
+  - 数据库动态调度（类似 `django-celery-beat`，但框架无关）
+  - 异步任务原生支持（自动兼容 `async def` 函数）
+  - 更友好的 IDE 类型提示（改善开发体验)
+
+🚧 本项目持续开发中，欢迎关注、Star 或提出 Issue 与 PR。
 
 ## 安装
 1. 克隆仓库：
@@ -60,8 +70,70 @@ Async-FastAPI-MultiDB 是一个异步 FastAPI 模板项目，旨在无缝集成 
     http://127.0.0.1:8000/docs
     ```
 
+## Celery
+更多细节请参考 `src.queues` 目录中的源代码，了解任务注册、调度器实现以及异步任务的执行逻辑。
+
+### DatabaseScheduler — 数据库动态调度器
+通过自定义调度器 `DatabaseScheduler`，实现从数据库中动态加载周期任务，并支持定时自动刷新：
+
+- 类似 `django-celery-beat`，但可自由集成于任意 Web 框架（FastAPI）
+- 周期性地（如每 60 秒）从数据库加载任务，无需重启 Worker
+- 自动合并配置文件中的任务，优先使用配置项
+- 支持 `AsyncSession` `asyncpg` 你无需再向之前一样提供一个同步的数据库
+
+#### 示例代码
+```python
+from src.core.config import settings
+from src.queues.celery import Celery
+
+REDIS_URL = str(settings.CELERY_REDIS_URL)
+DATABASE_URL = "postgresql+asyncpg://your_username:your_password@localhost:27017/you_database"
+app = Celery("celery_app", broker=REDIS_URL, backend=REDIS_URL)
+app.conf.update({"timezone": settings.CELERY_TIMEZONE, "database_url": DATABASE_URL, "refresh_interval": 60})
+
+app.autodiscover_tasks(["src.queues.tasks"])
+```
+
+运行 Celery beat `celery -A "src.queues.app" beat -S "src.queues.scheduler:AsyncDatabaseScheduler" -l info`
+
+### AsyncTask — 原生支持 async def 的任务
+通过自定义 Task 基类，让 Celery 支持异步任务的自动识别与执行：
+
+- 如果任务是 async def，自动使用 asyncio.run() 或当前事件循环运行
+- 无需手动区分 sync / async，统一任务调用逻辑
+- 完全兼容已有的同步任务
+
+#### 示例代码
+```python
+import asyncio
+
+from src.queues.app import app
+
+
+@app.task
+async def run_async_task() -> None:
+    print("async task start.")
+    await asyncio.sleep(10)
+    print("async task done.")
+```
+
+运行 Celery worker `celery -A "src.queues.app" worker -l info`
+
+### TypedCelery — 增强类型提示的 Celery 封装
+对原生 Celery 进行了封装，以获得更精准的类型提示支持：
+
+- 重写了 Celery 部分函数和类，使返回值和函数签名在 IDE 中更加明确
+- 在 PyCharm、VSCode 中智能提示参数与返回值，减少低级错误
+- 对新手或大型项目尤其友好，提升团队开发效率
+#### 示例1
+![celery-type-1](docs/images/celery-type-1.png)
+#### 示例2
+![celery-type-2](docs/images/celery-type-2.png)
+#### 示例3
+![celery-type-3](docs/images/celery-type-3.png)
+
 ## Git 相关规范
-<span><a href="./docs/GIT.md">Git 规范</a></span>
+见 <span><a href="./docs/GIT.md">Git 规范</a></span>
 
 ## 许可证
 本项目基于 Apache-2.0 许可证，详见 [LICENSE](LICENSE) 文件。
