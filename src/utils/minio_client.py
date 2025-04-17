@@ -14,11 +14,7 @@ from minio.error import S3Error
 from minio.helpers import ObjectWriteResult
 
 from src.schemas.base import BaseModel
-
-KB = 1024
-MB = KB * KB
-GB = MB * KB
-TB = GB * KB
+from src.utils.constants import MB
 
 
 class UploadPart(BaseModel):

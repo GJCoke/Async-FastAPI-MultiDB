@@ -9,15 +9,13 @@ Date   : 2025-03-13
 
 from uuid import UUID
 
-from pydantic import EmailStr
+from pydantic import Field
 
 from src.schemas.request import BaseRequest
 
 
-class AuthRequest(BaseRequest):
+class JWTUser(BaseRequest):
+    """The user information embedded in a JWT token."""
+
+    user_id: UUID = Field(..., alias="sub")
     username: str
-    password: int
-    test: bool
-    uuid: UUID
-    email: EmailStr
-    user_id: int

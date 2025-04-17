@@ -36,10 +36,24 @@ class BaseHTTPException(HTTPException):
         super().__init__(status_code, detail, headers)
 
 
+class UnauthorizedException(BaseHTTPException):
+    """Exception for unauthorized (401 error)."""
+
+    def __init__(self, *, status_code: int = status.HTTP_401_UNAUTHORIZED, detail: str = "unauthorized."):
+        """
+        Initializes the UnauthorizedException.
+
+        Args:
+            status_code (int): The HTTP status code for unauthorized (default 401).
+            detail (str): The error message (default "unauthorized.").
+        """
+        super().__init__(status_code=status_code, detail=detail)
+
+
 class PermissionDeniedException(BaseHTTPException):
     """Exception for permission denial (403 error)."""
 
-    def __init__(self, *, status_code: int = 403, detail: str = "permission denied."):
+    def __init__(self, *, status_code: int = status.HTTP_403_FORBIDDEN, detail: str = "permission denied."):
         """
         Initializes the PermissionDeniedException.
 

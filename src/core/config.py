@@ -7,12 +7,15 @@ Author : Coke
 Date   : 2025-03-11
 """
 
+import secrets
+import warnings
 from typing import Any
 
-from pydantic import Field, MongoDsn, PostgresDsn, RedisDsn, Secret
+from pydantic import Field, MongoDsn, PostgresDsn, RedisDsn, Secret, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.core.environment import Environment
+from src.utils.constants import DAYS, WEEKS
 
 
 class Config(BaseSettings):
@@ -117,6 +120,18 @@ class Config(BaseSettings):
     # Current environment (e.g., TESTING, PRODUCTION)
     ENVIRONMENT: Environment = Environment.PRODUCTION
 
+    # noinspection PyNestedDecorators
+    @field_validator("ENVIRONMENT")
+    @classmethod
+    def environment_validator(cls, value: Environment) -> Environment:
+        if value.value == Environment.LOCAL:
+            warnings.warn(
+                "The application is currently running in the local environment."
+                "Make sure to update environment-specific settings before deploying to production.",
+                RuntimeWarning,
+            )
+        return value
+
     # Cors settings
     CORS_ORIGINS: list[str]
     CORS_ORIGINS_REGEX: str | None = None
@@ -132,6 +147,54 @@ class Config(BaseSettings):
 
 
 settings = Config()  # type: ignore
+
+
+class AuthConfig(BaseSettings):
+    """Auth configuration."""
+
+    JWT_ALG: str = "HS256"
+
+    ACCESS_TOKEN_KEY: Secret[str]
+    ACCESS_TOKEN_EXP: int = 1 * DAYS
+
+    REFRESH_TOKEN_KEY: Secret[str]
+    REFRESH_TOKEN_EXP: int = 1 * WEEKS
+
+    # TODO: add RSA config.
+
+    # noinspection PyNestedDecorators
+    @model_validator(mode="before")
+    @classmethod
+    def ensure_keys_config(cls, auth: dict) -> dict:
+        """
+        Ensures that the ACCESS_TOKEN_KEY and REFRESH_TOKEN_KEY are configured in the environment.
+        If the keys are missing, this function will raise an error in a deployed environment
+        or generate new ones if not deployed.
+
+        Raises:
+            ValueError: If the keys are missing and the application is deployed.
+        """
+        message = """
+            Please configure `{field}` in your `.env` file.
+            Do not generate it dynamically at runtime, especially in distributed environments.
+            Using a fixed key ensures consistent token verification across multiple services or instances.
+        """
+        if "ACCESS_TOKEN_KEY" not in auth:
+            if settings.ENVIRONMENT.is_deployed:
+                raise ValueError(message.format(field="ACCESS_TOKEN_KEY"))
+            auth["ACCESS_TOKEN_KEY"] = secrets.token_urlsafe(32)
+            secrets.token_hex()
+
+        if "REFRESH_TOKEN_KEY" not in auth:
+            if settings.ENVIRONMENT.is_deployed:
+                raise ValueError(message.format(field="REFRESH_TOKEN_KEY"))
+            auth["REFRESH_TOKEN_KEY"] = secrets.token_urlsafe(32)
+
+        return auth
+
+
+auth_settings = AuthConfig()  # type: ignore
+
 app_configs: dict[str, Any] = {"title": "FastAPI MultiDB"}
 
 # Disable the OpenAPI documentation in non-debug environments
