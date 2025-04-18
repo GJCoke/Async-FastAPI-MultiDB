@@ -13,7 +13,7 @@ from typing import Annotated
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 
-from src.core.config import settings
+from src.core.config import auth_settings, settings
 from src.core.exceptions import UnauthorizedException
 from src.schemas.auth import JWTUser
 from src.utils.security import decode_token
@@ -35,7 +35,7 @@ def parse_jwt_user(token: Annotated[str, Depends(oauth2_scheme)]) -> JWTUser:
         UnauthorizedException: If the token is invalid or decoding fails.
     """
 
-    user = decode_token(token)
+    user = decode_token(token, auth_settings.ACCESS_TOKEN_KEY)
 
     if not user:
         raise UnauthorizedException()

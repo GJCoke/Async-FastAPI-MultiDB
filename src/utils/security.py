@@ -24,36 +24,31 @@ from cryptography.hazmat.primitives.asymmetric.types import PrivateKeyTypes, Pub
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
 from pydantic import Secret
 
-from src.core.config import auth_settings
 from src.core.exceptions import UnauthorizedException
 from src.schemas.auth import JWTUser
 
 
-def create_token(
-    user: JWTUser,
-    *,
-    expires_delta: timedelta = timedelta(seconds=auth_settings.ACCESS_TOKEN_EXP),
-    key: Secret[str] = auth_settings.ACCESS_TOKEN_KEY,
-) -> str:
+def create_token(user: JWTUser, expires_delta: timedelta, key: Secret[str], alg: str) -> str:
     """
     Create a JWT access token.
 
     Args:
         user (JWTUser): The user information to encode in the token.
-        expires_delta (timedelta, optional): Token expiration duration. Defaults to configured ACCESS_TOKEN_EXP.
-        key (str, optional): Secret key used to sign the JWT. Defaults to ACCESS_TOKEN_KEY from settings.
+        expires_delta (timedelta): Token expiration duration. Defaults to configured ACCESS_TOKEN_EXP.
+        key (str): Secret key used to sign the JWT. Defaults to ACCESS_TOKEN_KEY from settings.
+        alg (str): Secret algorithm used to sign the JWT. Defaults to 'RS256'.
 
     Returns:
         str: The generated JWT as a string.
     """
-    header = dict(alg=auth_settings.JWT_ALG, typ="JWT")
+    header = dict(alg=alg, typ="JWT")
     payload = user.serializable_dict()
     payload["exp"] = datetime.now(UTC) + expires_delta
 
     return jwt.encode(header=header, payload=payload, key=key.get_secret_value()).decode("utf-8")
 
 
-def decode_token(token: str, *, key: Secret[str] = auth_settings.ACCESS_TOKEN_KEY) -> JWTUser:
+def decode_token(token: str, key: Secret[str]) -> JWTUser:
     """
     Decode and verify a JWT access token, and return the corresponding user info.
 
@@ -141,7 +136,7 @@ def serialize_key(key: RSAPrivateKey | RSAPublicKey) -> bytes:
     )
 
 
-def decrypt_public_pem(pem: str) -> PublicKeyTypes:
+def load_public_pem(pem: str) -> PublicKeyTypes:
     """
     Load a public key from a PEM-encoded string.
 
@@ -203,3 +198,13 @@ def decrypt_message(private_key: RSAPrivateKey, encrypted_message: str) -> str:
         padding.PKCS1v15(),
     )
     return decrypted_message.decode("utf-8")
+
+
+if __name__ == "__main__":
+    __private_key, __public_key = generate_rsa_key_pair()
+    _private_key, _public_key = serialize_key(__private_key), serialize_key(__public_key)
+    with open("private.pem", "wb") as private_key_file:
+        private_key_file.write(_private_key)
+
+    with open("public.pem", "wb") as public_key_file:
+        public_key_file.write(_public_key)

@@ -7,22 +7,31 @@ Author : Coke
 Date   : 2025-03-11
 """
 
+import os
+import re
 import secrets
 import warnings
 from typing import Any
 
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from pydantic import Field, MongoDsn, PostgresDsn, RedisDsn, Secret, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings as _BaseSettings
+from pydantic_settings import SettingsConfigDict
 
 from src.core.environment import Environment
 from src.utils.constants import DAYS, WEEKS
+from src.utils.security import generate_rsa_key_pair, load_private_key, serialize_key
+
+
+class BaseSettings(_BaseSettings):
+    """Pydantic BaseSettings class."""
+
+    # Pydantic model config for reading from an .env file
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
 class Config(BaseSettings):
     """Project configuration settings loaded from environment variables."""
-
-    # Pydantic model config for reading from an .env file
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     # PostgreSQL configuration settings
     POSTGRESQL_ASYNC_SCHEME: str
@@ -123,14 +132,15 @@ class Config(BaseSettings):
     # noinspection PyNestedDecorators
     @field_validator("ENVIRONMENT")
     @classmethod
-    def environment_validator(cls, value: Environment) -> Environment:
-        if value.value == Environment.LOCAL:
+    def environment_validator(cls, environment: Environment) -> Environment:
+        """Local environment warn."""
+        if environment.value == Environment.LOCAL:
             warnings.warn(
-                "The application is currently running in the local environment."
+                "The application is currently running in the local environment. "
                 "Make sure to update environment-specific settings before deploying to production.",
                 RuntimeWarning,
             )
-        return value
+        return environment
 
     # Cors settings
     CORS_ORIGINS: list[str]
@@ -160,7 +170,8 @@ class AuthConfig(BaseSettings):
     REFRESH_TOKEN_KEY: Secret[str]
     REFRESH_TOKEN_EXP: int = 1 * WEEKS
 
-    # TODO: add RSA config.
+    RSA_PRIVATE_KEY: RSAPrivateKey
+    RSA_PUBLIC_KEY: Secret[str]
 
     # noinspection PyNestedDecorators
     @model_validator(mode="before")
@@ -179,18 +190,80 @@ class AuthConfig(BaseSettings):
             Do not generate it dynamically at runtime, especially in distributed environments.
             Using a fixed key ensures consistent token verification across multiple services or instances.
         """
-        if "ACCESS_TOKEN_KEY" not in auth:
-            if settings.ENVIRONMENT.is_deployed:
-                raise ValueError(message.format(field="ACCESS_TOKEN_KEY"))
-            auth["ACCESS_TOKEN_KEY"] = secrets.token_urlsafe(32)
-            secrets.token_hex()
+        cls.ensure_key_exists(auth, "ACCESS_TOKEN_KEY", message)
+        cls.ensure_key_exists(auth, "REFRESH_TOKEN_KEY", message)
 
-        if "REFRESH_TOKEN_KEY" not in auth:
+        if "RSA_PRIVATE_KEY" not in auth or "RSA_PUBLIC_KEY" not in auth:
             if settings.ENVIRONMENT.is_deployed:
-                raise ValueError(message.format(field="REFRESH_TOKEN_KEY"))
-            auth["REFRESH_TOKEN_KEY"] = secrets.token_urlsafe(32)
+                raise ValueError(message.format(field="RSA_PRIVATE_KEY or RSA_PUBLIC_KEY"))
+            private_key, public_key = generate_rsa_key_pair()
+
+            auth["RSA_PRIVATE_KEY"], auth["RSA_PUBLIC_KEY"] = private_key, serialize_key(public_key)
+
+        else:
+            try:
+                auth["RSA_PRIVATE_KEY"] = load_private_key(cls.load_rsa_key(auth["RSA_PRIVATE_KEY"]))
+                auth["RSA_PUBLIC_KEY"] = cls.load_rsa_key(auth["RSA_PUBLIC_KEY"])
+            except Exception as e:
+                raise ValueError(f"""
+                        Please check the configuration for `RSA_PRIVATE_KEY` or `RSA_PUBLIC_KEY`.
+                        Error: {str(e)}.
+                    """)
 
         return auth
+
+    @classmethod
+    def ensure_key_exists(cls, auth: dict, key: str, message: str) -> None:
+        """
+        Ensures that a specified key exists in the given dictionary `auth`.
+        If the key does not exist, it generates a new value using `secrets.token_urlsafe(32)`
+        unless the environment is deployed, in which case a ValueError is raised.
+
+        Args:
+            auth (dict): The dictionary where the key is checked and potentially added.
+            key (str): The key to check for in the `auth` dictionary.
+            message (str): The error message format used when raising a ValueError if the key is missing
+                           and the environment is deployed.
+
+        Raises:
+            ValueError: If the key is missing in the `auth` dictionary and the environment is deployed.
+
+        Returns:
+            None: This method does not return anything; it either adds the key to the `auth` dictionary
+                  or raises a ValueError.
+        """
+        if key not in auth:
+            if settings.ENVIRONMENT.is_deployed:
+                raise ValueError(message.format(field=key))
+            auth[key] = secrets.token_urlsafe(32)
+
+    @classmethod
+    def load_rsa_key(cls, key: str) -> str:
+        """
+        Loads the RSA key from a file if the provided `key` is a file path.
+        If the `key` is not a file path, it returns the `key` as is.
+
+        The function checks if the `key` contains a directory separator (e.g., `/` or `\\`),
+        and if so, it attempts to read the contents of the file at the given path.
+        If the file does not exist, a ValueError is raised.
+
+        Args:
+            key (str): The RSA private or public key, either as a file path or as a raw string.
+
+        Raises:
+            ValueError: If the file path does not exist when `key` contains directory separators.
+
+        Returns:
+            str: The RSA key, either the contents of the file or the raw `key` as provided.
+        """
+        if re.search(r"[\\/]", key):
+            if not os.path.exists(key):
+                raise ValueError("'RSA_PRIVATE_KEY' or 'RSA_PUBLIC_KEY' path does not exist.")
+
+            with open(key, "r", encoding="utf-8") as file:
+                return file.read()
+
+        return key
 
 
 auth_settings = AuthConfig()  # type: ignore

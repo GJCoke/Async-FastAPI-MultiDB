@@ -184,3 +184,6 @@ debug*.py
 
 # log
 logs/
+
+# pem
+*.pem
