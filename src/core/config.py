@@ -23,6 +23,10 @@ from src.utils.constants import DAYS, WEEKS
 from src.utils.security import generate_rsa_key_pair, load_private_key, serialize_key
 
 
+class ConfigError(Exception):
+    """Config error."""
+
+
 class BaseSettings(_BaseSettings):
     """Pydantic BaseSettings class."""
 
@@ -195,7 +199,7 @@ class AuthConfig(BaseSettings):
 
         if "RSA_PRIVATE_KEY" not in auth or "RSA_PUBLIC_KEY" not in auth:
             if settings.ENVIRONMENT.is_deployed:
-                raise ValueError(message.format(field="RSA_PRIVATE_KEY or RSA_PUBLIC_KEY"))
+                raise ConfigError(message.format(field="RSA_PRIVATE_KEY or RSA_PUBLIC_KEY"))
             private_key, public_key = generate_rsa_key_pair()
 
             auth["RSA_PRIVATE_KEY"], auth["RSA_PUBLIC_KEY"] = private_key, serialize_key(public_key)
@@ -205,7 +209,7 @@ class AuthConfig(BaseSettings):
                 auth["RSA_PRIVATE_KEY"] = load_private_key(cls.load_rsa_key(auth["RSA_PRIVATE_KEY"]))
                 auth["RSA_PUBLIC_KEY"] = cls.load_rsa_key(auth["RSA_PUBLIC_KEY"])
             except Exception as e:
-                raise ValueError(f"""
+                raise ConfigError(f"""
                         Please check the configuration for `RSA_PRIVATE_KEY` or `RSA_PUBLIC_KEY`.
                         Error: {str(e)}.
                     """)
@@ -234,7 +238,7 @@ class AuthConfig(BaseSettings):
         """
         if key not in auth:
             if settings.ENVIRONMENT.is_deployed:
-                raise ValueError(message.format(field=key))
+                raise ConfigError(message.format(field=key))
             auth[key] = secrets.token_urlsafe(32)
 
     @classmethod
@@ -258,7 +262,7 @@ class AuthConfig(BaseSettings):
         """
         if re.search(r"[\\/]", key):
             if not os.path.exists(key):
-                raise ValueError("'RSA_PRIVATE_KEY' or 'RSA_PUBLIC_KEY' path does not exist.")
+                raise ConfigError("'RSA_PRIVATE_KEY' or 'RSA_PUBLIC_KEY' path does not exist.")
 
             with open(key, "r", encoding="utf-8") as file:
                 return file.read()
