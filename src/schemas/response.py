@@ -40,12 +40,14 @@ class Response(BaseResponse, Generic[T]):
     def __init__(
         self,
         /,
-        code: int = status.HTTP_200_OK,
-        message: str = "Successful.",
+        code: int | None = None,
+        message: str | None = None,
         data: T | None = None,
         **kwargs: Any,
     ):
-        super().__init__(code=code, message=message, data=data, **kwargs)  # type: ignore
+        payload = {k: v for k, v in dict(code=code, message=message, data=data).items() if v is not None}
+        payload = {**payload, **kwargs}
+        super().__init__(**payload)
         self.ts = int(time.time())
 
 

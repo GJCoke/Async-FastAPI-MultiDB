@@ -25,15 +25,15 @@ from cryptography.hazmat.primitives.serialization import load_pem_private_key, l
 from pydantic import Secret
 
 from src.core.exceptions import UnauthorizedException
-from src.schemas.auth import JWTUser
+from src.schemas.auth import UserJWT
 
 
-def create_token(user: JWTUser, expires_delta: timedelta, key: Secret[str], alg: str) -> str:
+def create_token(user: UserJWT, expires_delta: timedelta, key: Secret[str], alg: str) -> str:
     """
     Create a JWT access token.
 
     Args:
-        user (JWTUser): The user information to encode in the token.
+        user (UserJWT): The user information to encode in the token.
         expires_delta (timedelta): Token expiration duration. Defaults to configured ACCESS_TOKEN_EXP.
         key (str): Secret key used to sign the JWT. Defaults to ACCESS_TOKEN_KEY from settings.
         alg (str): Secret algorithm used to sign the JWT. Defaults to 'RS256'.
@@ -48,7 +48,7 @@ def create_token(user: JWTUser, expires_delta: timedelta, key: Secret[str], alg:
     return jwt.encode(header=header, payload=payload, key=key.get_secret_value()).decode("utf-8")
 
 
-def decode_token(token: str, key: Secret[str]) -> JWTUser:
+def decode_token(token: str, key: Secret[str]) -> UserJWT:
     """
     Decode and verify a JWT access token, and return the corresponding user info.
 
@@ -57,7 +57,7 @@ def decode_token(token: str, key: Secret[str]) -> JWTUser:
         key (str, optional): Secret key used to verify the token signature. Defaults to ACCESS_TOKEN_KEY from settings.
 
     Returns:
-        JWTUser: The user information extracted from the token.
+        UserJWT: The user information extracted from the token.
 
     Raises:
         UnauthorizedException: If the token is invalid or decoding fails.
@@ -67,7 +67,7 @@ def decode_token(token: str, key: Secret[str]) -> JWTUser:
     except JoseError:
         raise UnauthorizedException()
 
-    return JWTUser(**payload)
+    return UserJWT(**payload)
 
 
 def hash_password(password: str) -> bytes:

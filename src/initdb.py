@@ -1,4 +1,6 @@
 """
+Init database.
+
 Author  : Coke
 Date    : 2025-04-18
 """
@@ -8,12 +10,12 @@ import asyncio
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.database import AsyncSessionLocal
-from src.models.user import User
-from src.schemas.auth import CreateUser
+from src.models.auth import User
+from src.schemas.auth import UserCreate
 from src.utils.security import hash_password
 
-users: list[CreateUser] = [
-    CreateUser(name="admin", email="admin@gmail.com", username="admin", password="123456"),  # type: ignore
+users: list[UserCreate] = [
+    UserCreate(name="admin", email="admin@gmail.com", username="admin", password="123456"),  # type: ignore
 ]
 
 
