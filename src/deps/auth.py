@@ -11,14 +11,14 @@ Date   : 2025-04-17
 from typing import Annotated
 
 from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 from src.core.config import auth_settings, settings
 from src.core.exceptions import UnauthorizedException
 from src.schemas.auth import JWTUser
 from src.utils.security import decode_token
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_PREFIX_V1}/auth/swaggerLogin", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_PREFIX_V1}/auth/login/swagger", auto_error=False)
 
 
 def parse_jwt_user(token: Annotated[str, Depends(oauth2_scheme)]) -> JWTUser:
@@ -44,3 +44,5 @@ def parse_jwt_user(token: Annotated[str, Depends(oauth2_scheme)]) -> JWTUser:
 
 
 AuthorDep = Annotated[JWTUser, Depends(parse_jwt_user)]
+
+OAuth2Form = Annotated[OAuth2PasswordRequestForm, Depends()]

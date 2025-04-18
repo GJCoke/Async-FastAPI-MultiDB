@@ -37,8 +37,15 @@ class Response(BaseResponse, Generic[T]):
     ts: int = Field(int(time.time()), description="current server time.")
     data: T | None = Field(None, description="response data.")
 
-    def __init__(self, /, **kwargs: Any):
-        super().__init__(**kwargs)
+    def __init__(
+        self,
+        /,
+        code: int = status.HTTP_200_OK,
+        message: str = "Successful.",
+        data: T | None = None,
+        **kwargs: Any,
+    ):
+        super().__init__(code=code, message=message, data=data, **kwargs)  # type: ignore
         self.ts = int(time.time())
 
 

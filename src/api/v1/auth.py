@@ -7,87 +7,51 @@ Author : Coke
 Date   : 2025-03-11
 """
 
-from typing import Any
-from uuid import UUID
+import uuid
+from datetime import timedelta
 
-from beanie import PydanticObjectId
-from fastapi import APIRouter
-from sqlmodel import select
-from sqlmodel.ext.asyncio.session import AsyncSession
+from fastapi import APIRouter, Depends
 
+from src.core.config import auth_settings
 from src.core.route import BaseRoute
-from src.deps.database import SessionDep
-from src.models.test import Test as TestModel
-from src.models.test import testCrud
-from src.queues.models import IntervalSchedule, Period, PeriodicTask, TaskType
-from src.schemas.base import BaseModel
+from src.deps.auth import AuthorDep, OAuth2Form
+from src.deps.environment import check_debug
+from src.schemas.auth import JWTUser, OAuth2TokenResponse
 from src.schemas.response import Response
+from src.utils.constants import DAYS
+from src.utils.security import create_token
 
-router = APIRouter(tags=["auth"], route_class=BaseRoute)
-
-
-class Test(BaseModel):
-    id: PydanticObjectId
-    name: str
-    desc_test: str
+router = APIRouter(prefix="/auth", tags=["Auth"], route_class=BaseRoute)
 
 
-@router.post("/login/{user_id}")
-async def login(session: SessionDep) -> Response[Any]:
-    interval = IntervalSchedule(every=10, period=Period.SECONDS)
-    session.add(interval)
-    task = PeriodicTask(
-        name="test_celery",
-        task="src.queues.tasks.tasks.test_celery",
-        task_type=TaskType.INTERVAL,
-        schedule_id=interval.id,
+@router.get("/keys/public")
+async def get_public_key() -> Response[str]:
+    """Obtain the public key for RSA encryption of password."""
+
+    return Response(data=auth_settings.RSA_PUBLIC_KEY.get_secret_value())
+
+
+@router.post("/login")
+async def login() -> Response[str]:
+    return Response(data="123")
+
+
+@router.post("/login/swagger", include_in_schema=False, dependencies=[Depends(check_debug)])
+async def login_swagger(form: OAuth2Form) -> OAuth2TokenResponse:
+    token = create_token(
+        JWTUser(sub=uuid.uuid4(), username=form.username),  # type: ignore
+        timedelta(seconds=1 * DAYS),
+        auth_settings.ACCESS_TOKEN_KEY,
+        auth_settings.JWT_ALG,
     )
-    session.add(task)
-    await session.commit()
-    return Response(data=None)
+    return OAuth2TokenResponse(access_token=token, token_type="bearer")
 
 
-@router.get("/celery")
-async def __test_celery(session: SessionDep) -> Response[Any]:
-    data = await session.exec(select(PeriodicTask))
-    return Response(data=data.all())
+@router.get("/user/info")
+async def get_user_info(user: AuthorDep) -> Response[str]:
+    return Response(data="123")
 
 
-@router.post("/add/test")
-async def add_test(session1: SessionDep) -> Response[Any]:
-    async def affiliation(session: AsyncSession) -> None:
-        company_structure = dict(
-            name="霸天集团",
-            children=[
-                dict(name="机械部队", children=[dict(name="机甲小队"), dict(name="机器人兵团"), dict(name="战车队")]),
-                dict(name="战略部", children=[dict(name="情报分析组"), dict(name="指挥决策组")]),
-                dict(name="科技部", children=[dict(name="高能武器组"), dict(name="人工智能组")]),
-                dict(name="资源部", children=[dict(name="矿产采集组"), dict(name="能源管理组")]),
-                dict(name="后勤部", children=[dict(name="物资供应组"), dict(name="人员调度组")]),
-            ],
-        )
-
-        _corporation = TestModel(name=company_structure["name"])  # type: ignore
-        session.add(_corporation)
-        await session.commit()
-
-        async def recursion(children: list) -> None:
-            for item in children:
-                _item = TestModel(name=item.get("name"))
-                session.add(_item)
-                await session.commit()
-
-                if item.get("children"):
-                    await recursion(item["children"])  # type: ignore
-
-        await recursion(company_structure["children"])  # type: ignore
-
-    await affiliation(session1)
-    return Response(data=None)
-
-
-@router.put("/add/test")
-async def put_test(session: SessionDep, id: UUID, name: str) -> Response[Any]:
-    crud = testCrud
-    response = await crud.update_by_id(id, {"name": name, "desc_test": "desc1111"}, session=session)
-    return Response(data=response)
+@router.post("/refresh")
+async def refresh_token(user: AuthorDep) -> Response[str]:
+    return Response(data="123")
