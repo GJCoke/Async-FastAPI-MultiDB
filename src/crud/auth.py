@@ -13,7 +13,7 @@ Date   : 2025-04-18
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.core.exceptions import NotFoundException
+from src.core.exceptions import BadRequestException
 from src.crud.base import BaseSQLModelCRUD
 from src.models.auth import User
 from src.schemas.auth import UserCreate, UserUpdate
@@ -35,7 +35,7 @@ class UserCRUD(BaseSQLModelCRUD[User, UserCreate, UserUpdate]):
             User: The matched user object.
 
         Raises:
-            NotFoundException: If no user is found with the username.
+            BadRequestException: If no user is found with the username.
         """
 
         session = session or self.session
@@ -45,6 +45,6 @@ class UserCRUD(BaseSQLModelCRUD[User, UserCreate, UserUpdate]):
         response = result.first()
 
         if not response:
-            raise NotFoundException(detail="User not found.")
+            raise BadRequestException()
 
         return response

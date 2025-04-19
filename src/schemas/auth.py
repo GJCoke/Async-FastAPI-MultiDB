@@ -34,11 +34,18 @@ from src.schemas.request import BaseRequest
 from src.schemas.response import BaseResponse
 
 
-class UserJWT(BaseRequest):
-    """The user information embedded in a JWT token."""
+class UserAccessJWT(BaseRequest):
+    """The user information embedded in a JWT access token."""
 
     user_id: UUID = Field(..., alias="sub")
     name: str
+    jti: UUID
+
+
+class UserRefreshJWT(UserAccessJWT):
+    """The user information embedded in a JWT refresh token."""
+
+    agent: str
 
 
 class LoginRequest(BaseRequest):
@@ -46,6 +53,12 @@ class LoginRequest(BaseRequest):
 
     username: str
     password: str
+
+
+class RefreshTokenRequest(BaseRequest):
+    """The refresh token schemas request."""
+
+    refresh_token: str
 
 
 class UserInfoResponse(BaseResponse):

@@ -21,7 +21,7 @@ from pydantic_settings import SettingsConfigDict
 
 from src.core.environment import Environment
 from src.utils.constants import DAYS, WEEKS
-from src.utils.security import generate_rsa_key_pair, load_private_key, serialize_key
+from src.utils.security import AccessSecret, RefreshSecret, generate_rsa_key_pair, load_private_key, serialize_key
 
 
 class ConfigError(Exception):
@@ -169,10 +169,10 @@ class AuthConfig(BaseSettings):
 
     JWT_ALG: str = "HS256"
 
-    ACCESS_TOKEN_KEY: Secret[str]
+    ACCESS_TOKEN_KEY: AccessSecret
     ACCESS_TOKEN_EXP: timedelta = timedelta(seconds=1 * DAYS)
 
-    REFRESH_TOKEN_KEY: Secret[str]
+    REFRESH_TOKEN_KEY: RefreshSecret
     REFRESH_TOKEN_EXP: timedelta = timedelta(seconds=1 * WEEKS)
 
     RSA_PRIVATE_KEY: RSAPrivateKey

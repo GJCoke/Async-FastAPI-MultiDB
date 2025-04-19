@@ -4,6 +4,6 @@ Author : Coke
 Date   : 2025-03-29
 """
 
-from .database import RedisClientDep, SessionDep
+from .database import RedisDep, SessionDep
 
-__all__ = ["SessionDep", "RedisClientDep"]
+__all__ = ["SessionDep", "RedisDep"]

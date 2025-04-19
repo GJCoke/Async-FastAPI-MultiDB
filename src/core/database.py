@@ -15,7 +15,7 @@ import pkgutil
 from abc import ABC, abstractmethod
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, AsyncIterator, Iterator
+from typing import Any, AsyncIterator, Iterator, overload
 
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -207,10 +207,49 @@ class AsyncRedisClient:
         """
         return self._echo
 
+    @staticmethod
+    def _to_str(key: KeyT) -> str:
+        """
+        Converts the input `key` (of type memoryview, bytes, or any other type)
+        into a string representation.
+
+        Args:
+            key (KeyT): The input value, which can be of type memoryview, bytes, or other types.
+
+        Returns:
+            str: The string representation of the input key.
+        """
+
+        if isinstance(key, memoryview):
+            return key.tobytes().decode("utf-8")
+        if isinstance(key, bytes):
+            return key.decode("utf-8")
+        return str(key)
+
+    @overload
+    async def set(
+        self,
+        key: str,
+        value: EncodableT | dict | list,
+        *,
+        ttl: int | timedelta | None = None,
+        is_transaction: bool = False,
+    ) -> None: ...
+
+    @overload
     async def set(
         self,
         key: KeyT,
         value: EncodableT,
+        *,
+        ttl: int | timedelta | None = None,
+        is_transaction: bool = False,
+    ) -> None: ...
+
+    async def set(
+        self,
+        key: KeyT,
+        value: EncodableT | dict | list,
         *,
         ttl: int | timedelta | None = None,
         is_transaction: bool = False,
@@ -220,13 +259,20 @@ class AsyncRedisClient:
 
         Args:
             key (KeyT): The key to store in Redis.
-            value (EncodableT): The value to store for the key.
+            value (EncodableT | dict | list): The value to store for the key.
             ttl (int | timedelta | None, optional): The time-to-live for the key. Defaults to None.
             is_transaction (bool, optional): Whether to perform this operation as part of a transaction.
         """
 
         async with self.client.pipeline(transaction=is_transaction) as pipe:
-            await pipe.set(key, value)
+            if isinstance(value, dict):
+                await pipe.hset(self._to_str(key), mapping=value)  # type: ignore
+
+            elif isinstance(value, list):
+                await pipe.lpush(self._to_str(key), *value)  # type: ignore
+
+            else:
+                await pipe.set(key, value)
 
             if ttl is not None:
                 await pipe.expire(key, ttl)
@@ -238,6 +284,17 @@ class AsyncRedisClient:
             key,
             value,
         )
+
+    def _get_log(self, key: KeyT, response: Any) -> None:
+        """
+        Log Redis key access and corresponding response for debugging.
+
+        Args:
+            key (KeyT): The Redis key that was accessed.
+            response (Any): The value or data returned from Redis.
+        """
+        self.logger.info('Attempting to retrieve value for key: "%s" from Redis.', key)
+        self.logger.debug('Successfully retrieved value for key "%s": %s', key, response)
 
     async def get(self, key: KeyT) -> EncodableT:
         """
@@ -252,9 +309,39 @@ class AsyncRedisClient:
 
         response = await self.client.get(key)
 
-        self.logger.info('Attempting to retrieve value for key: "%s" from Redis.', key)
-        self.logger.debug('Successfully retrieved value for key "%s": %s', key, response)
+        self._get_log(key, response)
+        return response
 
+    async def get_mapping(self, key: str) -> dict:
+        """
+        Retrieve all fields and values from a Redis hash stored at the given key.
+
+        Args:
+            key (KeyT): The key of the Redis hash.
+
+        Returns:
+            dict: A dictionary containing all field-value pairs in the hash.
+        """
+        response = await self.client.hgetall(key)  # type: ignore
+
+        self._get_log(key, response)
+        return response
+
+    async def get_array(self, key: str, *, start: int = 0, end: int = -1) -> list:
+        """
+        Retrieve a range of elements from a Redis list stored at the given key.
+
+        Args:
+            key (str): The key of the Redis list.
+            start (int, optional): The starting index. Defaults to 0.
+            end (int, optional): The ending index. Defaults to -1 (end of list).
+
+        Returns:
+            list: A list of elements from the specified range in the Redis list.
+        """
+        response = await self.client.lrange(key, start=start, end=end)  # type: ignore
+
+        self._get_log(key, response)
         return response
 
     async def exists(self, *args: KeyT) -> int:
