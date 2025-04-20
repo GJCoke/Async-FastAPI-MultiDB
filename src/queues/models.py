@@ -64,8 +64,8 @@ class IntervalSchedule(BaseSchedule, table=True):
 
     __tablename__ = "celery_interval_schedule"
 
-    every: int = Field(..., description="每多少单位时间执行一次")
-    period: Period = Field(..., description="时间单位")
+    every: int
+    period: Period
 
     @property
     def schedule(self) -> Schedule:
