@@ -30,7 +30,7 @@ from src import models
 from src.core.config import settings
 from src.models.base import Document
 
-logger = logging.getLogger("app")
+logger = logging.getLogger(__name__)
 ASYNC_DATABASE_URL = str(settings.ASYNC_DATABASE_POSTGRESQL_URL)
 SYNC_DATABASE_URL = str(settings.SYNC_DATABASE_POSTGRESQL_URL)
 REDIS_URL = str(settings.REDIS_URL)

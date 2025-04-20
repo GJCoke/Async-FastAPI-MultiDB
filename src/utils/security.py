@@ -12,6 +12,7 @@ Date   : 2025-04-17
 """
 
 import base64
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import overload
 
@@ -27,6 +28,8 @@ from pydantic import SecretStr
 
 from src.core.exceptions import UnauthorizedException
 from src.schemas.auth import UserAccessJWT, UserRefreshJWT
+
+logger = logging.getLogger(__name__)
 
 
 class AccessSecret(SecretStr):
@@ -93,6 +96,7 @@ def decode_token(token: str, key: AccessSecret | RefreshSecret) -> UserAccessJWT
     try:
         payload = jwt.decode(token, key=key.get_secret_value())
     except JoseError:
+        logger.exception("Invalid JWT token: %s", token)
         raise UnauthorizedException()
 
     return UserAccessJWT(**payload) if isinstance(key, AccessSecret) else UserRefreshJWT(**payload)

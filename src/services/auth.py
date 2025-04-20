@@ -9,6 +9,7 @@ Author  : Coke
 Date    : 2025-04-18
 """
 
+import logging
 import time
 from uuid import UUID
 
@@ -20,6 +21,8 @@ from src.deps.auth import refresh_structure
 from src.schemas.auth import TokenResponse, UserAccessJWT, UserRefreshJWT
 from src.utils.security import check_password, create_token, decrypt_message
 from src.utils.uuid7 import uuid8
+
+logger = logging.getLogger(__name__)
 
 
 def create_access_token(user: UserAccessJWT) -> str:
@@ -74,6 +77,7 @@ def decrypt_password(rsa_password: str) -> str:
     try:
         password = decrypt_message(auth_settings.RSA_PRIVATE_KEY, rsa_password)
     except Exception:
+        logger.exception("Failed to decrypt password.", exc_info=True)
         raise BadRequestException(detail="Invalid username or password.")
 
     return password
@@ -154,6 +158,7 @@ async def refresh_user_token(
     """
     redis_key = refresh_structure.format(user_id=user_id, jti=jti)
     if not await redis.exists(redis_key):
+        logger.debug("No refresh token found in the redis.")
         raise PermissionDeniedException()
 
     await redis.delete(redis_key)
@@ -192,6 +197,7 @@ async def user_login(
     decrypted_password = decrypt_password(password)
 
     if not check_password(decrypted_password, user_info.password):
+        logger.debug("Invalid password for user %s", username)
         raise BadRequestException(detail="Invalid username or password.")
 
     token = await create_user_token(user_info.id, user_info.name, redis, user_agent)

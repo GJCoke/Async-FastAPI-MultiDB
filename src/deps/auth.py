@@ -8,6 +8,8 @@ Author : Coke
 Date   : 2025-04-17
 """
 
+import logging
+
 from fastapi import Depends, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from typing_extensions import Annotated, Doc
@@ -33,6 +35,8 @@ __all__ = [
     "refresh_structure",
     "oauth2_scheme",
 ]
+
+logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_PREFIX_V1}/auth/login/swagger", auto_error=False)
 refresh_structure = "auth:refresh:<{user_id}>:<{jti}>"
@@ -63,6 +67,7 @@ def get_access_token(token: Annotated[str, Depends(oauth2_scheme)]) -> str:
         str: The extracted JWT access token.
     """
     if token is None:
+        logger.debug("No token is provided.")
         raise UnauthorizedException()
 
     return token
@@ -82,6 +87,7 @@ def get_refresh_token(x_refresh_token: Annotated[str, Header(...)]) -> str:
         str: The extracted refresh token.
     """
     if x_refresh_token is None:
+        logger.debug("No refresh token is provided.")
         raise PermissionDeniedException()
 
     return x_refresh_token
@@ -101,6 +107,7 @@ def get_user_agent(user_agent: Annotated[str, Header(..., include_in_schema=Fals
         str: The extracted User-Agent string.
     """
     if user_agent is None:
+        logger.debug("No User-Agent is provided.")
         raise BadRequestException()
 
     return user_agent
@@ -155,9 +162,6 @@ def parse_access_jwt_user(token: HeaderAccessTokenDep) -> UserAccessJWT:
 
     user = decode_token(token, auth_settings.ACCESS_TOKEN_KEY)
 
-    if not user:
-        raise UnauthorizedException()
-
     return user
 
 
@@ -176,16 +180,19 @@ def parse_refresh_jwt_user(
         UserAccessJWT: The decoded user information extracted from the token.
 
     Raises:
-        PermissionDeniedException: If the token is invalid or decoding fails.
+        UnauthorizedException: If the token is invalid or decoding fails.
         BadRequestException: if the device information does not match.
     """
 
     user = decode_token(x_refresh_token, auth_settings.REFRESH_TOKEN_KEY)
 
-    if not user:
-        raise PermissionDeniedException()
-
     if user.agent != user_agent:
+        logger.warning(
+            "User-Agent mismatch detected: original request User-Agent '%s'"
+            " does not match refresh token User-Agent '%s'.",
+            user_agent,
+            user.agent,
+        )
         raise BadRequestException()
 
     return user
@@ -266,6 +273,7 @@ async def get_current_user_form_db(user: UserAccessJWTDep, db_user: AuthCrudDep)
     """
     user_info = await db_user.get(user.user_id)
     if not user_info:
+        logger.debug("No user found in the database.")
         raise UnauthorizedException()
     return user_info
 
@@ -292,10 +300,12 @@ async def get_current_user_form_redis_and_db(user: UserRefreshJWTDep, db_user: A
     refresh_token = redis.get(refresh_structure.format(user_id=user.user_id, jti=user.jti))
 
     if not refresh_token:
+        logger.debug("No refresh token found in the redis.")
         raise PermissionDeniedException()
 
     user_info = await db_user.get(user.user_id)
     if not user_info:
+        logger.debug("No user found in the database.")
         raise PermissionDeniedException()
 
     return user_info
