@@ -48,18 +48,17 @@ Async-FastAPI-MultiDB is an asynchronous FastAPI project template designed to se
     docker compose up -d --build
     ```
 
-4. Initialize Database:
-    1. Run Alembic to create the database schema.
-        ```bash
-        docker compose exec app scripts/alembic-makemigrations.sh "Initialize Database"
-        docker compose exec app scripts/alembic-migrate.sh
-        ```
-    2. Run the initdb script to generate the necessary initial data.
-         ```bash
-         docker compose exec app scripts/initdb.sh
-         ```
+4. Run Alembic to create the database schema.
+    ```bash
+    docker compose exec app scripts/alembic-makemigrations.sh "Initialize Database"
+    docker compose exec app scripts/alembic-migrate.sh
+    ```
+5. Run the initdb script to generate the necessary initial data.
+    ```bash
+    docker compose exec app scripts/initdb.sh
+    ```
 
-5. Development workflow:
+6. Development workflow:
     This project uses `pre-commit` to enforce code quality and consistency:
     ```bash
     pre-commit install
