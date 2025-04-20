@@ -182,7 +182,18 @@ class AuthConfig(BaseSettings):
     @field_validator("ACCESS_TOKEN_EXP", "REFRESH_TOKEN_EXP", mode="before")
     @classmethod
     def set_token_expires(cls, expires: str) -> timedelta:
-        """Return access token expiration as timedelta."""
+        """
+        Convert token expiration configuration to timedelta.
+
+        This validator supports values defined as either timedelta objects
+        or string/integer seconds (e.g., from environment variables).
+
+        Args:
+            expires (str | int | timedelta): The configured expiration time.
+
+        Returns:
+            timedelta: A valid timedelta representing the expiration duration.
+        """
 
         if isinstance(expires, timedelta):
             return expires

@@ -76,17 +76,43 @@ def get_sync_session() -> Iterator[Session]:
 
 
 class BaseManager(ABC):
-    @classmethod
-    @abstractmethod
-    def connect(cls) -> Any: ...
+    """
+    Abstract base class for resource managers.
+
+    Defines a common interface for connecting to, disconnecting from,
+    and accessing resource clients (e.g., database, Redis).
+    Subclasses must implement the actual logic.
+    """
 
     @classmethod
     @abstractmethod
-    def disconnect(cls) -> Any: ...
+    def connect(cls) -> Any:
+        """
+        Establish a connection to the resource.
+
+        Should be implemented by subclasses to handle specific connection logic.
+        """
+        ...
 
     @classmethod
     @abstractmethod
-    def client(cls) -> Any: ...
+    def disconnect(cls) -> Any:
+        """
+        Disconnect from the resource.
+
+        Should be implemented by subclasses to cleanly close the connection and release any associated resources.
+        """
+        ...
+
+    @classmethod
+    @abstractmethod
+    def client(cls) -> Any:
+        """
+        Return the connected client instance.
+
+        Should be implemented by subclasses to provide the connected client for further operations.
+        """
+        ...
 
 
 class RedisManager(BaseManager):

@@ -262,12 +262,11 @@ async def get_current_user_form_db(user: UserAccessJWTDep, db_user: AuthCrudDep)
         User: The full user model fetched from the database.
 
     Raises:
-        UnauthorizedException: If the token is invalid or decoding fails.
-        BadRequestException: If no user is found in the database with the given ID.
+        UnauthorizedException: If the token is invalid or decoding fails or no user is found in the database.
     """
     user_info = await db_user.get(user.user_id)
     if not user_info:
-        raise BadRequestException()
+        raise UnauthorizedException()
     return user_info
 
 

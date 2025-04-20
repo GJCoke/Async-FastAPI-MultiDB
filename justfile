@@ -7,8 +7,8 @@ cp env:
   cp .env.example .env
 
 # run static check.
-static check:
-  sh ./scripts/static-check.sh
+format:
+   docker compose exec app scripts/static-check.sh
 
 # stop docker compose
 stop:
@@ -29,3 +29,19 @@ kill:
 # get docker compose list
 ps:
   docker compose ps
+
+# Run Alembic database migrations
+migrate:
+  docker compose exec app scripts/alembic-migrate.sh
+
+# Downgrade the database to a previous version with optional arguments
+downgrade *args:
+  docker compose exec app scripts/alembic-downgrade.sh {{args}}
+
+# Generate new Alembic migration files with optional arguments
+makemigrations *args:
+  docker compose exec app scripts/alembic-makemigrations.sh {{args}}
+
+# init database.
+initdb:
+  docker compose exec app scripts/initdb.sh

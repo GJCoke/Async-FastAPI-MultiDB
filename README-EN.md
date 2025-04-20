@@ -1,5 +1,5 @@
 <div align="center">
-	<h1>Async-FastAPI-MultiDB</h1>
+  <h1>Async-FastAPI-MultiDB</h1>
   <span><a href="./README.md">中文</a> | English</span>
 </div>
 
@@ -47,14 +47,17 @@ Async-FastAPI-MultiDB is an asynchronous FastAPI project template designed to se
     docker network create app_network
     docker compose up -d --build
     ```
-    Access the Swagger UI at: [http://localhost:16000/docs](http://localhost:16000/docs)
 
-4. Run locally:
-    ```bash
-    pip install ".[dev]"
-    uvicorn --reload "src.main:app"
-    ```
-    Access the Swagger UI at: [http://localhost:8000/docs](http://localhost:8000/docs)
+4. Initialize Database:
+    1. Run Alembic to create the database schema.
+        ```bash
+        docker compose exec app scripts/alembic-makemigrations.sh "Initialize Database"
+        docker compose exec app scripts/alembic-migrate.sh
+        ```
+    2. Run the initdb script to generate the necessary initial data.
+         ```bash
+         docker compose exec app scripts/initdb.sh
+         ```
 
 5. Development workflow:
     This project uses `pre-commit` to enforce code quality and consistency:
@@ -62,29 +65,19 @@ Async-FastAPI-MultiDB is an asynchronous FastAPI project template designed to se
     pre-commit install
     ```
 
-    The `.pre-commit-config.yaml` includes:
-    - Auto formatting via `ruff`
-    - Static type checking with `mypy`
+    > The `.pre-commit-config.yaml` includes:
+    > - Large file check: Whether large files have been added to the committed code.
+    > - Auto formatting via `ruff`
+    > - Static type checking with `mypy`
 
+> Access the Swagger UI at: [http://localhost:16000/docs](http://localhost:16000/docs)
+#### Example 1
+![swagger-1](docs/images/swagger-1.png)
+#### Example 2
+> Error responses are globally enhanced—no need to define them on each route individually.
+
+![swagger-2](docs/images/swagger-2.png)
 ---
-
-## Usage
-
-1. Create and apply migrations for SQL databases (e.g., PostgreSQL):
-    ```bash
-    alembic revision --autogenerate -m "Init Database"
-    alembic upgrade head
-    ```
-
-2. Start the server:
-    ```bash
-    uvicorn src.main:app --reload
-    ```
-
-3. Access the API docs:
-    ```
-    http://127.0.0.1:8000/docs
-    ```
 
 ---
 ## Auth Module Overview
@@ -150,7 +143,6 @@ During login, the frontend encrypts the password using the RSA public key provid
 ---
 
 ## Celery
-For more details, please refer to the source code in the `src.queues` directory, including task registration, scheduler implementation, and async task execution logic.
 
 ### DatabaseScheduler — Dynamic Database-based Scheduler
 
@@ -209,6 +201,8 @@ Enhances native Celery with improved type hinting and IDE integration:
 ![celery-type-2](docs/images/celery-type-2.png)
 #### Example 3
 ![celery-type-3](docs/images/celery-type-3.png)
+
+> For more details, please refer to the source code in the `src.queues` directory, including task registration, scheduler implementation, and async task execution logic.
 
 ---
 

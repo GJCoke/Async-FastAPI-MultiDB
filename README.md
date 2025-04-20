@@ -1,5 +1,5 @@
 <div align="center">
-	<h1>Async-FastAPI-MultiDB</h1>
+  <h1>Async-FastAPI-MultiDB</h1>
   <span>中文 | <a href="./README-EN.md">English</a></span>
 </div>
 
@@ -40,46 +40,39 @@ Async-FastAPI-MultiDB 是一个异步 FastAPI 模板项目，旨在无缝集成 
     ```bash
     cp .env.example .env
     ```
-3. 使用Docker
+3. 运行Docker
     ```bash
     docker network create app_network
     docker compose up -d --build
     ```
-   访问 `http://localhost:16000/docs` 即可查看 Swagger 文档
+4. 初始化数据库
+   1. 运行 Alembic 创建数据库结构
+      ```bash
+      docker compose exec app scripts/alembic-makemigrations.sh "Init Database"
+      docker compose exec app scripts/alembic-migrate.sh
+      ```
+   2. 运行 initdb 脚本生成初始数据
+      ```bash
+      docker compose exec app scripts/initdb.sh
+      ```
 
-4. 本地运行(安装依赖)
-    ```bash
-    pip install ".[dev]"
-    uvicorn --reload "src.main:app"
-    ```
-   访问 `http://localhost:8000/docs` 即可查看 Swagger 文档
 5. 开发
-
-    本项目使用 `pre-commit` 来确保代码在提交前的质量和一致性。它会在代码提交前自动运行检查工具和格式化工具。
+   本项目使用 `pre-commit` 来确保代码在提交前的质量和一致性。它会在代码提交前自动运行检查工具和格式化工具。
     ```bash
     pre-commit install
     ```
-    `pre-commit` 的配置文件是 `.pre-commit-config.yaml`，其中包含以下钩子：
-    - 代码格式化：使用 ruff 自动格式化代码。
-    - 静态代码检查: 使用 mypy 进行静态代码检查。
+   > `pre-commit` 的配置文件是 `.pre-commit-config.yaml`，其中包含以下钩子：
+   > - 大文件检查：提交的代码中是否添加了过大的文件。
+   > - 代码格式化：使用 ruff 自动格式化代码。
+   > - 静态代码检查：使用 mypy 进行静态代码检查。
 
----
+> 访问 [http://localhost:16000/docs](http://localhost:16000/docs) 即可查看 Swagger 文档
+#### 示例1
+![swagger-1](docs/images/swagger-1.png)
+#### 示例2
+> 错误响应已统一增强处理，无需在每个路由中单独添加错误响应。
 
-## 使用方法
-1. 为 SQL 数据库（如 PostgreSQL）创建并应用迁移：
-    ```bash
-    alembic revision --autogenerate -m "Init Database"
-    alembic upgrade head
-    ```
-2. 运行服务器：
-    ```bash
-    uvicorn main:app --reload
-    ```
-3. 访问自动生成的文档：
-    ```
-    http://127.0.0.1:8000/docs
-    ```
-
+![swagger-2](docs/images/swagger-2.png)
 ---
 
 ## Auth 模块说明
@@ -149,7 +142,6 @@ Async-FastAPI-MultiDB 是一个异步 FastAPI 模板项目，旨在无缝集成 
 ---
 
 ## Celery
-更多细节请参考 `src.queues` 目录中的源代码，了解任务注册、调度器实现以及异步任务的执行逻辑。
 
 ### DatabaseScheduler — 数据库动态调度器
 通过自定义调度器 `DatabaseScheduler`，实现从数据库中动态加载周期任务，并支持定时自动刷新：
@@ -209,6 +201,8 @@ async def run_async_task() -> None:
 ![celery-type-2](docs/images/celery-type-2.png)
 #### 示例3
 ![celery-type-3](docs/images/celery-type-3.png)
+
+> 更多细节请参考 `src.queues` 目录中的源代码，了解任务注册、调度器实现以及异步任务的执行逻辑。
 
 ---
 

@@ -30,11 +30,15 @@ from src.schemas.auth import UserAccessJWT, UserRefreshJWT
 
 
 class AccessSecret(SecretStr):
+    """Custom secret type for Access Token."""
+
     def __str__(self) -> str:
         return "AccessSecret(**********)"
 
 
 class RefreshSecret(SecretStr):
+    """Custom secret type for Refresh Token."""
+
     def __str__(self) -> str:
         return "RefreshSecret(**********)"
 
