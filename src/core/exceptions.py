@@ -36,6 +36,20 @@ class BaseHTTPException(HTTPException):
         super().__init__(status_code, detail, headers)
 
 
+class BadRequestException(BaseHTTPException):
+    """Exception for bad request (400 error)."""
+
+    def __init__(self, *, status_code: int = status.HTTP_400_BAD_REQUEST, detail: str = "bad request."):
+        """
+        Initializes the BadRequestException.
+
+        Args:
+            status_code (int): The HTTP status code for bad request (default 400).
+            detail (str): The error message (default "bad request.").
+        """
+        super().__init__(status_code=status_code, detail=detail)
+
+
 class UnauthorizedException(BaseHTTPException):
     """Exception for unauthorized (401 error)."""
 

@@ -7,6 +7,6 @@ Author : Coke
 Date   : 2025-03-10
 """
 
-from .test import Test
+from .auth import User
 
-__all__ = ["Test"]
+__all__ = ["User"]

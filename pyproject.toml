@@ -14,6 +14,8 @@ dependencies = [
     # Server
     "fastapi>=0.115.11,<1.0",
     "uvicorn==0.34.0",
+    # In FastAPI, if you want to use Form or File to receive form data or file uploads, you must install the python-multipart dependency.
+    "python-multipart==0.0.20",
     # Encryption Algorithm
     "authlib==1.5.1",
     "bcrypt==4.3.0",

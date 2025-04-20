@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from src.core.config import settings
 from src.core.database import MongoManager, RedisManager
 
-logger = logging.getLogger("app")
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager

@@ -130,8 +130,8 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         """
         session = session or self.session
         statement = select(self.model).where(self.model.id == _id)
-        _response = await session.exec(statement)  # type: ignore
-        response = _response.first()
+        result = await session.exec(statement)  # type: ignore
+        response = result.first()
 
         if not nullable and not response:
             raise NotFoundException(detail=f"{_id} not found.")
@@ -156,8 +156,8 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         """
         session = session or self.session
         statement = select(self.model).filter(self.model.id.in_(ids))  # type: ignore
-        _response = await session.exec(statement)
-        response = cast(list[SQLModel], _response.all())
+        result = await session.exec(statement)
+        response = cast(list[SQLModel], result.all())
 
         return response or []
 
@@ -178,8 +178,8 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         """
         session = session or self.session
         statement = select(self.model).filter(*args)
-        _response = await session.exec(statement)
-        response = cast(list[SQLModel], _response.all())
+        result = await session.exec(statement)
+        response = cast(list[SQLModel], result.all())
         return response
 
     async def get_count(
@@ -230,8 +230,8 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         if order_by is not None:
             statement = statement.order_by(order_by)
 
-        _response = await session.exec(statement)
-        response = cast(list[SQLModel], _response.all() or [])
+        result = await session.exec(statement)
+        response = cast(list[SQLModel], result.all() or [])
         total = await self.get_count(*args, session=session)
 
         return PaginatedResponse(records=response, total=total, page=page, page_size=size)
@@ -531,12 +531,12 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
             dict: Paginated response containing records, total count, page, and page size.
         """
 
-        _response = self.model.find(*args, session=session).skip((page - 1) * size).limit(size)
+        result = self.model.find(*args, session=session).skip((page - 1) * size).limit(size)
 
         if order_by is not None:
-            _response.sort(*order_by)
+            result.sort(*order_by)
 
-        response = await _response.to_list()
+        response = await result.to_list()
         total = await self.get_count(*args, session=session)
 
         return PaginatedResponse(records=response, total=total, page=page, page_size=size)

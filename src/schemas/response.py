@@ -37,8 +37,17 @@ class Response(BaseResponse, Generic[T]):
     ts: int = Field(int(time.time()), description="current server time.")
     data: T | None = Field(None, description="response data.")
 
-    def __init__(self, /, **kwargs: Any):
-        super().__init__(**kwargs)
+    def __init__(
+        self,
+        /,
+        code: int | None = None,
+        message: str | None = None,
+        data: T | None = None,
+        **kwargs: Any,
+    ):
+        payload = {k: v for k, v in dict(code=code, message=message, data=data).items() if v is not None}
+        payload = {**payload, **kwargs}
+        super().__init__(**payload)
         self.ts = int(time.time())
 
 

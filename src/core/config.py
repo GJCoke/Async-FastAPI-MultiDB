@@ -11,6 +11,7 @@ import os
 import re
 import secrets
 import warnings
+from datetime import timedelta
 from typing import Any
 
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
@@ -20,7 +21,7 @@ from pydantic_settings import SettingsConfigDict
 
 from src.core.environment import Environment
 from src.utils.constants import DAYS, WEEKS
-from src.utils.security import generate_rsa_key_pair, load_private_key, serialize_key
+from src.utils.security import AccessSecret, RefreshSecret, generate_rsa_key_pair, load_private_key, serialize_key
 
 
 class ConfigError(Exception):
@@ -168,14 +169,36 @@ class AuthConfig(BaseSettings):
 
     JWT_ALG: str = "HS256"
 
-    ACCESS_TOKEN_KEY: Secret[str]
-    ACCESS_TOKEN_EXP: int = 1 * DAYS
+    ACCESS_TOKEN_KEY: AccessSecret
+    ACCESS_TOKEN_EXP: timedelta = timedelta(seconds=1 * DAYS)
 
-    REFRESH_TOKEN_KEY: Secret[str]
-    REFRESH_TOKEN_EXP: int = 1 * WEEKS
+    REFRESH_TOKEN_KEY: RefreshSecret
+    REFRESH_TOKEN_EXP: timedelta = timedelta(seconds=1 * WEEKS)
 
     RSA_PRIVATE_KEY: RSAPrivateKey
     RSA_PUBLIC_KEY: Secret[str]
+
+    # noinspection PyNestedDecorators
+    @field_validator("ACCESS_TOKEN_EXP", "REFRESH_TOKEN_EXP", mode="before")
+    @classmethod
+    def set_token_expires(cls, expires: str) -> timedelta:
+        """
+        Convert token expiration configuration to timedelta.
+
+        This validator supports values defined as either timedelta objects
+        or string/integer seconds (e.g., from environment variables).
+
+        Args:
+            expires (str | int | timedelta): The configured expiration time.
+
+        Returns:
+            timedelta: A valid timedelta representing the expiration duration.
+        """
+
+        if isinstance(expires, timedelta):
+            return expires
+
+        return timedelta(seconds=int(expires))
 
     # noinspection PyNestedDecorators
     @model_validator(mode="before")
@@ -197,7 +220,9 @@ class AuthConfig(BaseSettings):
         cls.ensure_key_exists(auth, "ACCESS_TOKEN_KEY", message)
         cls.ensure_key_exists(auth, "REFRESH_TOKEN_KEY", message)
 
-        if "RSA_PRIVATE_KEY" not in auth or "RSA_PUBLIC_KEY" not in auth:
+        rsa_private = auth.get("RSA_PRIVATE_KEY")
+        rsa_public = auth.get("RSA_PUBLIC_KEY")
+        if not rsa_private or not rsa_public:
             if settings.ENVIRONMENT.is_deployed:
                 raise ConfigError(message.format(field="RSA_PRIVATE_KEY or RSA_PUBLIC_KEY"))
             private_key, public_key = generate_rsa_key_pair()
@@ -236,7 +261,7 @@ class AuthConfig(BaseSettings):
             None: This method does not return anything; it either adds the key to the `auth` dictionary
                   or raises a ValueError.
         """
-        if key not in auth:
+        if not auth.get(key):
             if settings.ENVIRONMENT.is_deployed:
                 raise ConfigError(message.format(field=key))
             auth[key] = secrets.token_urlsafe(32)

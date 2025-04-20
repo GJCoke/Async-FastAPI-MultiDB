@@ -25,7 +25,7 @@ from src.core.lifecycle import lifespan
 from src.schemas.response import Response as SchemaResponse
 from src.schemas.response import ServerErrorResponse, ValidationErrorResponse
 
-logger = logging.getLogger("app")
+logger = logging.getLogger(__name__)
 
 app = FastAPI(**app_configs, lifespan=lifespan)
 

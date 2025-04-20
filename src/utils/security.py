@@ -12,30 +12,53 @@ Date   : 2025-04-17
 """
 
 import base64
+import logging
 from datetime import UTC, datetime, timedelta
+from typing import overload
 
 import bcrypt
 from authlib.jose import jwt
 from authlib.jose.errors import JoseError
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey, generate_private_key
 from cryptography.hazmat.primitives.asymmetric.types import PrivateKeyTypes, PublicKeyTypes
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, load_pem_public_key
-from pydantic import Secret
+from pydantic import SecretStr
 
 from src.core.exceptions import UnauthorizedException
-from src.schemas.auth import JWTUser
+from src.schemas.auth import UserAccessJWT, UserRefreshJWT
+
+logger = logging.getLogger(__name__)
 
 
-def create_token(user: JWTUser, expires_delta: timedelta, key: Secret[str], alg: str) -> str:
+class AccessSecret(SecretStr):
+    """Custom secret type for Access Token."""
+
+    def __str__(self) -> str:
+        return "AccessSecret(**********)"
+
+
+class RefreshSecret(SecretStr):
+    """Custom secret type for Refresh Token."""
+
+    def __str__(self) -> str:
+        return "RefreshSecret(**********)"
+
+
+def create_token(
+    user: UserAccessJWT,
+    expires_delta: timedelta,
+    key: AccessSecret | RefreshSecret,
+    alg: str,
+) -> str:
     """
     Create a JWT access token.
 
     Args:
-        user (JWTUser): The user information to encode in the token.
+        user (UserAccessJWT): The user information to encode in the token.
         expires_delta (timedelta): Token expiration duration. Defaults to configured ACCESS_TOKEN_EXP.
-        key (str): Secret key used to sign the JWT. Defaults to ACCESS_TOKEN_KEY from settings.
+        key (AccessSecret | RefreshSecret): Secret key used to sign the JWT. Defaults to ACCESS_TOKEN_KEY from settings.
         alg (str): Secret algorithm used to sign the JWT. Defaults to 'RS256'.
 
     Returns:
@@ -48,16 +71,24 @@ def create_token(user: JWTUser, expires_delta: timedelta, key: Secret[str], alg:
     return jwt.encode(header=header, payload=payload, key=key.get_secret_value()).decode("utf-8")
 
 
-def decode_token(token: str, key: Secret[str]) -> JWTUser:
+@overload
+def decode_token(token: str, key: AccessSecret) -> UserAccessJWT: ...
+
+
+@overload
+def decode_token(token: str, key: RefreshSecret) -> UserRefreshJWT: ...
+
+
+def decode_token(token: str, key: AccessSecret | RefreshSecret) -> UserAccessJWT | UserRefreshJWT:
     """
     Decode and verify a JWT access token, and return the corresponding user info.
 
     Args:
         token (str): The JWT token string to decode.
-        key (str, optional): Secret key used to verify the token signature. Defaults to ACCESS_TOKEN_KEY from settings.
+        key (AccessSecret | RefreshSecret): Secret key used to verify the token signature.
 
     Returns:
-        JWTUser: The user information extracted from the token.
+        UserAccessJWT: The user information extracted from the token.
 
     Raises:
         UnauthorizedException: If the token is invalid or decoding fails.
@@ -65,9 +96,10 @@ def decode_token(token: str, key: Secret[str]) -> JWTUser:
     try:
         payload = jwt.decode(token, key=key.get_secret_value())
     except JoseError:
+        logger.exception("Invalid JWT token: %s", token)
         raise UnauthorizedException()
 
-    return JWTUser(**payload)
+    return UserAccessJWT(**payload) if isinstance(key, AccessSecret) else UserRefreshJWT(**payload)
 
 
 def hash_password(password: str) -> bytes:
@@ -107,7 +139,7 @@ def generate_rsa_key_pair() -> tuple[RSAPrivateKey, RSAPublicKey]:
     Returns:
         tuple[RSAPrivateKey, RSAPublicKey]: A tuple containing the generated RSA private key and public key.
     """
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_key = generate_private_key(public_exponent=65537, key_size=2048)
     public_key = private_key.public_key()
 
     return private_key, public_key
@@ -123,7 +155,7 @@ def serialize_key(key: RSAPrivateKey | RSAPublicKey) -> bytes:
     Returns:
         bytes: The PEM-encoded bytes of the key.
     """
-    if isinstance(key, rsa.RSAPrivateKey):
+    if isinstance(key, RSAPrivateKey):
         return key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.TraditionalOpenSSL,
