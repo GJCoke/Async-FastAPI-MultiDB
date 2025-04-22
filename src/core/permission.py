@@ -3,18 +3,19 @@ Author  : Coke
 Date    : 2025-04-22
 """
 
+from starlette.routing import BaseRoute as StarletteRoute
+
+from src.core.database import AsyncSessionLocal
 from src.core.route import BaseRoute
-from src.deps.database import get_redis_client
-from src.schemas.router import FastAPIRouterResponse
+from src.crud.router import RouterCRUD
+from src.models.router import InterfaceRouter
+from src.schemas.router import FastAPIRouterCreate
 
 router = "interfaceRouter"
 
 
-async def store_router_in_db(routes: list[BaseRoute]) -> None:
-    redis = await get_redis_client()
-
-    router_list_by_db: list[FastAPIRouterResponse] = []
-    router_list_by_redis: list[str] = []
+async def store_router_in_db(routes: list[StarletteRoute | BaseRoute]) -> None:
+    router_list_by_db: list[FastAPIRouterCreate] = []
 
     for route in routes:
         if not isinstance(route, BaseRoute):
@@ -23,7 +24,7 @@ async def store_router_in_db(routes: list[BaseRoute]) -> None:
         if not route.include_in_schema:
             continue
 
-        custom_route = FastAPIRouterResponse.model_validate(
+        custom_route = FastAPIRouterCreate.model_validate(
             {
                 "name": route.summary or route.name,
                 "methods": route.methods,
@@ -31,8 +32,9 @@ async def store_router_in_db(routes: list[BaseRoute]) -> None:
                 "description": route.description,
             }
         )
-
         router_list_by_db.append(custom_route)
-        router_list_by_redis.append(custom_route.code)
 
-    await redis.set(router, router_list_by_redis)
+    async with AsyncSessionLocal() as session:
+        router_db = RouterCRUD(InterfaceRouter, session=session)
+        await router_db.clear_router()
+        await router_db.create_app_routers(router_list_by_db)

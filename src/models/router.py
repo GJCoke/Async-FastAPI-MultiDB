@@ -8,7 +8,7 @@ from sqlmodel import JSON, Column, Field
 from src.models.base import SQLModel
 
 
-class InterfaceRouter(SQLModel):
+class InterfaceRouter(SQLModel, table=True):
     __tablename__ = "interface_routers"
 
     name: str
