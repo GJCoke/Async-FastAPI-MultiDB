@@ -80,9 +80,9 @@ async def logout(auth: UserAccessJWTDep, redis: RedisDep) -> Response[bool]:
     Returns:
         Response[bool]: A response indicating whether the logout process was successful.
     """
-    refresh_token = refresh_structure.format(user_id=auth.user_id, jti=auth.jti)
-    if await redis.exists(refresh_token):
-        await redis.delete(refresh_token)
+    token = refresh_structure.format(user_id=auth.user_id, jti=auth.jti)
+    if await redis.exists(token):
+        await redis.delete(token)
 
     return Response(data=True)
 
@@ -157,3 +157,11 @@ async def get_user_info(user: UserDBDep) -> Response[UserInfoResponse]:
         Response[UserInfoResponse]: A standardized response containing user details.
     """
     return Response(data=UserInfoResponse.model_validate(user))
+
+
+@router.get("/user/{user_id}/project/{project_id}")
+async def get_user_info1(user: UserDBDep) -> Response[UserInfoResponse]: ...  # type: ignore  # TODO: remove.
+
+
+@router.get("/user/{user_id}", summary="测试结构哦")
+async def get_user_info2(user: UserDBDep) -> Response[UserInfoResponse]: ...  # type: ignore  # TODO: remove.
