@@ -29,6 +29,8 @@ Date   : 2025-03-13
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
+from sqlmodel import JSON, Column
+from sqlmodel import Field as SQLModelField
 
 from src.models.auth import User
 from src.schemas.request import BaseRequest
@@ -74,9 +76,13 @@ class UserInfoResponse(BaseResponse):
 class UserCreate(User):
     """Create user schemas request."""
 
+    roles: list[str] = SQLModelField([], sa_column=Column(JSON))
+
 
 class UserUpdate(User):
     """Update user schemas request."""
+
+    roles: list[str] = SQLModelField([], sa_column=Column(JSON))
 
 
 class OAuth2TokenResponse(BaseModel):

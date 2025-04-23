@@ -18,6 +18,7 @@ from src.core.config import auth_settings, settings
 from src.core.exceptions import BadRequestException, PermissionDeniedException, UnauthorizedException
 from src.crud.auth import UserCRUD
 from src.deps.database import RedisDep, SessionDep
+from src.deps.router import RequestRouterDep
 from src.models.auth import User
 from src.schemas.auth import UserAccessJWT, UserRefreshJWT
 from src.utils.security import decode_token
@@ -40,6 +41,7 @@ logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_PREFIX_V1}/auth/login/swagger", auto_error=False)
 refresh_structure = "auth:refresh:<{user_id}>:<{jti}>"
+permission_structure = "auth:permission:<{user_id}>"
 
 OAuth2Form = Annotated[
     OAuth2PasswordRequestForm,
@@ -333,3 +335,13 @@ UserRefreshDep = Annotated[
         """
     ),
 ]
+
+
+async def verify_user_permission(user: UserDBDep, route: RequestRouterDep, redis: RedisDep) -> User:
+    if not user.is_admin:
+        user_permission_list = await redis.get_array(permission_structure.format(user_id=user.id))
+        # TODO: If the key does not exist in Redis, fallback to querying the database.
+        if route.path not in user_permission_list:
+            raise PermissionDeniedException()
+
+    return user
