@@ -22,7 +22,7 @@ users: list[UserCreate] = [
 async def create_user(session: AsyncSession) -> None:
     for user in users:
         user_dict = user.serializable_dict()
-        user_dict["password"] = hash_password(user.password)
+        user_dict["password"] = hash_password(user.password.decode("utf-8"))
         session.add(User.model_validate(user_dict))
 
     await session.commit()

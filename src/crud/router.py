@@ -7,6 +7,8 @@ Author : Coke
 Date   : 2025-04-22
 """
 
+from typing import Any
+
 from sqlmodel import delete
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -29,11 +31,11 @@ class RouterCRUD(BaseSQLModelCRUD[InterfaceRouter, FastAPIRouterCreate, FastAPIR
 
         statement = delete(self.model)
         await session.exec(statement)  # type: ignore
-        await session.commit()
+        await self.commit()
 
     async def create_app_routers(
         self,
-        routes: list[FastAPIRouterCreate],
+        routes: list[FastAPIRouterCreate] | list[dict[str, Any]],
         *,
         session: AsyncSession | None = None,
     ) -> None:
@@ -47,4 +49,4 @@ class RouterCRUD(BaseSQLModelCRUD[InterfaceRouter, FastAPIRouterCreate, FastAPIR
         session = session or self.session
 
         session.add_all([self.model.model_validate(route) for route in routes])
-        await session.commit()
+        await self.commit()

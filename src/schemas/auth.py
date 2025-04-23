@@ -30,6 +30,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
+from src.models.auth import User
 from src.schemas.request import BaseRequest
 from src.schemas.response import BaseResponse
 
@@ -70,22 +71,12 @@ class UserInfoResponse(BaseResponse):
     username: str
 
 
-class UserCreate(BaseRequest):
+class UserCreate(User):
     """Create user schemas request."""
 
-    name: str
-    email: EmailStr
-    username: str
-    password: str
 
-
-class UserUpdate(BaseRequest):
+class UserUpdate(User):
     """Update user schemas request."""
-
-    id: UUID
-    name: str
-    email: EmailStr
-    username: str
 
 
 class OAuth2TokenResponse(BaseModel):
