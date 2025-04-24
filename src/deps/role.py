@@ -3,9 +3,13 @@ Author  : Coke
 Date    : 2025-04-24
 """
 
+from uuid import UUID
+
 from fastapi import Depends
 from typing_extensions import Annotated, Doc
 
+from src.core.config import auth_settings
+from src.core.database import AsyncRedisClient
 from src.core.exceptions import PermissionDeniedException
 from src.crud.role import RoleCRUD
 from src.deps import RedisDep, SessionDep
@@ -44,6 +48,40 @@ RoleCrudDep = Annotated[
 ]
 
 
+async def create_user_permission_cache(
+    user_id: UUID,
+    codes: list[str],
+    redis: AsyncRedisClient,
+    role_crud: RoleCRUD,
+) -> list[str]:
+    """
+    Create and cache user permissions in Redis based on role codes.
+
+    This function deletes any existing permission cache for the given user,
+    retrieves all permissions associated with the provided role codes,
+    and stores them in Redis with a specified TTL (time-to-live).
+
+    Args:
+        user_id (UUID): The unique identifier of the user.
+        codes (list[str]): A list of role codes assigned to the user.
+        redis (AsyncRedisClient): The Redis client used to cache the permissions.
+        role_crud (RoleCRUD): The role CRUD instance used to retrieve role information.
+
+    Returns:
+        list[str]: A list of permission codes.
+    """
+    redis_key = permission_structure.format(user_id=user_id)
+    if await redis.exists(redis_key):
+        await redis.delete(redis_key)
+
+    roles = await role_crud.get_role_by_codes(codes)
+    user_permission_list = [permission for role_info in roles for permission in role_info.interface_permissions]
+    if user_permission_list:
+        await redis.set(redis_key, user_permission_list, ttl=auth_settings.ACCESS_TOKEN_EXP)
+
+    return user_permission_list
+
+
 async def verify_user_permission(user: UserDBDep, route: RequestRouterDep, redis: RedisDep, role: RoleCrudDep) -> User:
     """
     Verifies if the user has permission to access a specific route.
@@ -70,12 +108,10 @@ async def verify_user_permission(user: UserDBDep, route: RequestRouterDep, redis
             user_permission_list: list[str] = await redis.get_array(redis_key)
 
         else:
-            roles = await role.get_role_by_codes(user.roles)
-            user_permission_list = [permission for role_info in roles for permission in role_info.interface_permissions]
-            if user_permission_list:
-                await redis.set(redis_key, user_permission_list)
+            user_permission_list = await create_user_permission_cache(user.id, user.roles, redis, role)
 
-        if route.path not in user_permission_list:
+        route_key = f"{':'.join(route.methods)}:{route.path}"
+        if route_key not in user_permission_list:
             raise PermissionDeniedException()
 
     return user

@@ -21,6 +21,7 @@ from src.deps.auth import (
 )
 from src.deps.database import RedisDep
 from src.deps.environment import check_debug
+from src.deps.role import RoleCrudDep, permission_structure
 from src.schemas.auth import (
     LoginRequest,
     OAuth2TokenResponse,
@@ -46,6 +47,7 @@ async def get_public_key() -> Response[str]:
 async def login(
     body: LoginRequest,
     auth: AuthCrudDep,
+    role: RoleCrudDep,
     redis: RedisDep,
     user_agent: HeaderUserAgentDep,
 ) -> Response[TokenResponse]:
@@ -58,13 +60,21 @@ async def login(
     Args:
         body (LoginRequest): The login request payload containing username and encrypted password.
         auth (AuthCrudDep): Dependency-injected authentication CRUD logic.
+        role (RoleCrudDep): Dependency-injected permission CRUD logic.
         redis (RedisDep): Redis client dependency.
         user_agent (HeaderUserAgentDep): User-Agent request object.
 
     Returns:
         Response[TokenResponse]: A standardized response containing access and refresh tokens.
     """
-    token = await user_login(body.username, body.password, user_crud=auth, redis=redis, user_agent=user_agent)
+    token = await user_login(
+        body.username,
+        body.password,
+        user_crud=auth,
+        role_crud=role,
+        redis=redis,
+        user_agent=user_agent,
+    )
     return Response(data=token)
 
 
@@ -84,6 +94,10 @@ async def logout(auth: UserAccessJWTDep, redis: RedisDep) -> Response[bool]:
     if await redis.exists(token):
         await redis.delete(token)
 
+    permission_key = permission_structure.format(user_id=auth.user_id)
+    if await redis.exists(permission_key):
+        await redis.delete(permission_key)
+
     return Response(data=True)
 
 
@@ -91,6 +105,7 @@ async def logout(auth: UserAccessJWTDep, redis: RedisDep) -> Response[bool]:
 async def refresh_token(
     jwt_user: UserRefreshJWTDep,
     user: UserRefreshDep,
+    role: RoleCrudDep,
     redis: RedisDep,
     user_agent: HeaderUserAgentDep,
 ) -> Response[TokenResponse]:
@@ -100,6 +115,7 @@ async def refresh_token(
     Args:
         jwt_user (UserRefreshJWTDep): Refresh token user info.
         user (UserRefreshDep): The decoded user data retrieved using the refresh token.
+        role (RoleCrudDep): Dependency-injected permission CRUD logic.
         redis (RedisDep): Redis client dependency for interacting with the Redis database.
         user_agent (HeaderUserAgentDep): The user-agent header from the request, used to validate the request.
 
@@ -110,7 +126,7 @@ async def refresh_token(
         PermissionDeniedException: If the refresh token is invalid.
         BadRequestException: If the user-agent does not match.
     """
-    token = await refresh_user_token(user.id, user.name, jwt_user.jti, redis, user_agent)
+    token = await refresh_user_token(jwt_user.jti, user, role, redis, user_agent)
     return Response(data=token)
 
 
@@ -157,11 +173,3 @@ async def get_user_info(user: UserDBDep) -> Response[UserInfoResponse]:
         Response[UserInfoResponse]: A standardized response containing user details.
     """
     return Response(data=UserInfoResponse.model_validate(user))
-
-
-@router.get("/user/{user_id}/project/{project_id}")
-async def get_user_info1(user: UserDBDep) -> Response[UserInfoResponse]: ...  # type: ignore  # TODO: remove.
-
-
-@router.get("/user/{user_id}", summary="测试结构哦")
-async def get_user_info2(user: UserDBDep) -> Response[UserInfoResponse]: ...  # type: ignore  # TODO: remove.

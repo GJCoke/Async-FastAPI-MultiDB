@@ -17,7 +17,10 @@ from src.core.config import auth_settings
 from src.core.database import AsyncRedisClient
 from src.core.exceptions import BadRequestException, PermissionDeniedException
 from src.crud.auth import UserCRUD
+from src.crud.role import RoleCRUD
 from src.deps.auth import refresh_structure
+from src.deps.role import create_user_permission_cache
+from src.models import User
 from src.schemas.auth import TokenResponse, UserAccessJWT, UserRefreshJWT
 from src.utils.security import check_password, create_token, decrypt_message
 from src.utils.uuid7 import uuid8
@@ -131,9 +134,9 @@ async def create_user_token(
 
 
 async def refresh_user_token(
-    user_id: UUID,
-    username: str,
     jti: UUID,
+    user: User,
+    role_crud: RoleCRUD,
     redis: AsyncRedisClient,
     user_agent: str,
 ) -> TokenResponse:
@@ -144,9 +147,9 @@ async def refresh_user_token(
     deletes the old token to prevent reuse, and generates new access and refresh tokens.
 
     Args:
-        user_id (UUID): The unique identifier of the user.
-        username (str): The user's username.
         jti (UUID): The JWT ID of the current refresh token.
+        user (User): User Models.
+        role_crud (RoleCRUD): A CRUD class instance for role-related operations.
         redis (AsyncRedisClient): The Redis client used for token validation and storage.
         user_agent (str): The user agent string from the request headers.
 
@@ -156,14 +159,15 @@ async def refresh_user_token(
     Raises:
         PermissionDeniedException: If the provided refresh token is invalid or expired.
     """
-    redis_key = refresh_structure.format(user_id=user_id, jti=jti)
+    redis_key = refresh_structure.format(user_id=user.id, jti=jti)
     if not await redis.exists(redis_key):
         logger.debug("No refresh token found in the redis.")
         raise PermissionDeniedException()
 
     await redis.delete(redis_key)
 
-    token = await create_user_token(user_id, username, redis, user_agent)
+    token = await create_user_token(user.id, user.username, redis, user_agent)
+    await create_user_permission_cache(user.id, user.roles, redis, role_crud)
     return token
 
 
@@ -172,6 +176,7 @@ async def user_login(
     password: str,
     *,
     user_crud: UserCRUD,
+    role_crud: RoleCRUD,
     redis: AsyncRedisClient,
     user_agent: str,
 ) -> TokenResponse:
@@ -182,6 +187,7 @@ async def user_login(
         username (str): The username provided by the client.
         password (str): The RSA-encrypted password provided by the client.
         user_crud (UserCRUD): A CRUD class instance for user-related operations.
+        role_crud (RoleCRUD): A CRUD class instance for role-related operations.
         redis (AsyncRedisClient): Redis client to use for authentication.
         user_agent (str): Request object to use for agent.
 
@@ -191,7 +197,6 @@ async def user_login(
     Returns:
         TokenResponse: JWT access and refresh tokens.
     """
-    # TODO: add user permission by redis.
 
     user_info = await user_crud.get_user_by_username(username)
 
@@ -202,4 +207,5 @@ async def user_login(
         raise BadRequestException(detail="Invalid username or password.")
 
     token = await create_user_token(user_info.id, user_info.name, redis, user_agent)
+    await create_user_permission_cache(user_info.id, user_info.roles, redis, role_crud)
     return token
