@@ -3,7 +3,7 @@
   <span>English | <a href="./README-CN.md">中文</a></span>
 </div>
 
-Async-FastAPI-MultiDB is an asynchronous FastAPI project template designed to seamlessly integrate both SQL (e.g., PostgreSQL, MySQL) and NoSQL (e.g., MongoDB) databases. This modern and efficient web framework is ideal for building scalable API services with full async support.
+This is a production-ready asynchronous backend template built with FastAPI, featuring integrated support for Celery, JWT authentication, RBAC permissions, and MinIO object storage. It supports both MongoDB and PostgreSQL, making it a powerful and flexible choice for modern backend development.
 
 ---
 
