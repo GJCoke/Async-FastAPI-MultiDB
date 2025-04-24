@@ -6,6 +6,7 @@ Date    : 2025-04-23
 from fastapi import Depends, Request
 from typing_extensions import Annotated, Doc
 
+from src.core.exceptions import BadRequestException
 from src.core.route import BaseRoute
 from src.crud.router import RouterCRUD
 from src.deps import SessionDep
@@ -25,7 +26,11 @@ async def get_request_router(request: Request) -> BaseRoute:
     Returns:
         BaseRoute: The route object that matches the current request path.
     """
-    return request.scope.get("route")
+    route = request.scope.get("route")
+    if not isinstance(route, BaseRoute):
+        raise BadRequestException()
+
+    return route
 
 
 async def get_router_crud(session: SessionDep) -> RouterCRUD:

@@ -3,25 +3,23 @@ Author  : Coke
 Date    : 2025-04-22
 """
 
-from sqlmodel import JSON, Column, Field
-
-from src.models.router import InterfaceRouter
-from src.schemas.response import BaseResponse
+from src.schemas import BaseModel, BaseRequest, ResponseSchema
 
 
-class FastAPIRouterResponse(BaseResponse, InterfaceRouter):
+class InterfaceRouterSchema(BaseModel):
+    name: str
+    description: str
+    path: str
+    methods: list[str]
+
+
+class FastAPIRouterResponse(InterfaceRouterSchema, ResponseSchema):
     """Interface router response schema."""
 
-    methods: list[str] = Field([], sa_column=Column(JSON))
 
-
-class FastAPIRouterCreate(InterfaceRouter):
+class FastAPIRouterCreate(InterfaceRouterSchema, BaseRequest):
     """Create interface router schema."""
 
-    methods: list[str] = Field([], sa_column=Column(JSON))
 
-
-class FastAPIRouterUpdate(InterfaceRouter):
+class FastAPIRouterUpdate(InterfaceRouterSchema, BaseRequest):
     """Update interface router schema."""
-
-    methods: list[str] = Field([], sa_column=Column(JSON))

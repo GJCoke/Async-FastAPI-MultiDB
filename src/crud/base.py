@@ -7,7 +7,7 @@ Author : Coke
 Date   : 2025-03-18
 """
 
-from typing import Any, Generic, Literal, TypeVar, cast, overload
+from typing import Any, Generic, Literal, Sequence, TypeVar, cast, overload
 from uuid import UUID
 
 from beanie import PydanticObjectId
@@ -298,7 +298,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
     async def create_all(
         self,
-        create_in: list[CreateSchema | SQLModel],
+        create_in: Sequence[CreateSchema | SQLModel],
         *,
         session: AsyncSession | None = None,
         auto_commit: bool = False,

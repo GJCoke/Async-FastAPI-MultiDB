@@ -18,6 +18,7 @@ from src.core.database import AsyncSessionLocal, MongoManager, RedisManager
 from src.core.route import BaseRoute
 from src.crud.router import RouterCRUD
 from src.models.router import InterfaceRouter
+from src.schemas.router import FastAPIRouterCreate
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ async def store_router_in_db(routes: list[StarletteRoute | BaseRoute]) -> None:
         routes (list): A list of route objects (either StarletteRoute or BaseRoute).
     """
 
-    app_routes: list[InterfaceRouter] = []
+    app_routes: list[FastAPIRouterCreate] = []
 
     for route in routes:
         if not isinstance(route, BaseRoute):
@@ -67,7 +68,7 @@ async def store_router_in_db(routes: list[StarletteRoute | BaseRoute]) -> None:
             continue
 
         app_routes.append(
-            InterfaceRouter.model_validate(
+            FastAPIRouterCreate.model_validate(
                 dict(
                     methods=route.methods,
                     path=route.path,
@@ -95,8 +96,8 @@ async def store_router_in_db(routes: list[StarletteRoute | BaseRoute]) -> None:
 
 def diff_api_routes(
     db_routes: list[InterfaceRouter],
-    app_routes: list[InterfaceRouter],
-) -> tuple[list[InterfaceRouter], list[UUID], list[dict[str, Any]]]:
+    app_routes: list[FastAPIRouterCreate],
+) -> tuple[list[FastAPIRouterCreate], list[UUID], list[dict[str, Any]]]:
     """
     Compare two API route lists and return three lists: added routes, removed route IDs, and modified routes.
 

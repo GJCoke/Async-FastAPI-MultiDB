@@ -15,14 +15,20 @@ from src.schemas.auth import UserCreate
 from src.utils.security import hash_password
 
 users: list[UserCreate] = [
-    UserCreate(name="admin", email="admin@gmail.com", username="admin", password="123456"),  # type: ignore
+    UserCreate(
+        name="admin",
+        email="admin@gmail.com",
+        username="admin",
+        password="123456",
+        is_admin=True,
+    ),  # type: ignore
 ]
 
 
 async def create_user(session: AsyncSession) -> None:
     for user in users:
         user_dict = user.serializable_dict()
-        user_dict["password"] = hash_password(user.password.decode("utf-8"))
+        user_dict["password"] = hash_password(user.password)
         session.add(User.model_validate(user_dict))
 
     await session.commit()
