@@ -38,8 +38,6 @@ app.add_middleware(
     allow_headers=settings.CORS_HEADERS,
 )
 
-app.include_router(v1_router)
-
 
 def get_client_addr(client: Address | None) -> str:
     """
@@ -137,3 +135,6 @@ async def handle_http_exception(request: Request, exc: HTTPException) -> JSONRes
         status_code=exc.status_code,
         content=SchemaResponse(code=exc.status_code, message=str(exc.detail)).serializable_dict(),
     )
+
+
+app.include_router(v1_router)

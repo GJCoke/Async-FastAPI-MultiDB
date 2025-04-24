@@ -10,16 +10,31 @@ import asyncio
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.database import AsyncSessionLocal
-from src.models.auth import User
+from src.models.auth import Role, User
 from src.schemas.auth import UserCreate
+from src.schemas.role import RoleCreate
 from src.utils.security import hash_password
 
+roles: list[RoleCreate] = [
+    RoleCreate(
+        name="admin",
+        description="Administrator",
+        code="ADMIN",
+        interface_permissions=["GET:/api/v1/router/backend"],
+    ),
+]
+
 users: list[UserCreate] = [
-    UserCreate(name="admin", email="admin@gmail.com", username="admin", password="123456"),  # type: ignore
+    UserCreate(
+        name="admin", email="admin@gmail.com", username="admin", password="123456", is_admin=True, roles=["ADMIN"]
+    ),  # type: ignore
 ]
 
 
 async def create_user(session: AsyncSession) -> None:
+    for role in roles:
+        session.add(Role.model_validate(role))
+
     for user in users:
         user_dict = user.serializable_dict()
         user_dict["password"] = hash_password(user.password)

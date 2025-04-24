@@ -28,10 +28,10 @@ Date   : 2025-03-13
 
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import EmailStr, Field
 
-from src.schemas.request import BaseRequest
-from src.schemas.response import BaseResponse
+from src.schemas import BaseModel, BaseRequest, BaseResponse, ResponseSchema
 
 
 class UserAccessJWT(BaseRequest):
@@ -61,34 +61,31 @@ class RefreshTokenRequest(BaseRequest):
     refresh_token: str
 
 
-class UserInfoResponse(BaseResponse):
+class UserSchema(BaseModel):
+    """User schema."""
+
+    name: str
+    email: EmailStr
+    username: str
+    roles: list[str] = []
+
+
+class UserInfoResponse(UserSchema, ResponseSchema):
     """User info schemas response."""
 
-    id: UUID
-    name: str
-    email: EmailStr
-    username: str
 
-
-class UserCreate(BaseRequest):
+class UserCreate(UserSchema, BaseRequest):
     """Create user schemas request."""
 
-    name: str
-    email: EmailStr
-    username: str
+    is_admin: bool = False
     password: str
 
 
-class UserUpdate(BaseRequest):
+class UserUpdate(UserSchema, BaseRequest):
     """Update user schemas request."""
 
-    id: UUID
-    name: str
-    email: EmailStr
-    username: str
 
-
-class OAuth2TokenResponse(BaseModel):
+class OAuth2TokenResponse(PydanticBaseModel):
     """OAuth2 token response."""
 
     access_token: str

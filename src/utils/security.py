@@ -13,7 +13,7 @@ Date   : 2025-04-17
 
 import base64
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import overload
 
 import bcrypt
@@ -28,6 +28,7 @@ from pydantic import SecretStr
 
 from src.core.exceptions import UnauthorizedException
 from src.schemas.auth import UserAccessJWT, UserRefreshJWT
+from src.utils.date import get_current_utc_time
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ def create_token(
     """
     header = dict(alg=alg, typ="JWT")
     payload = user.serializable_dict()
-    payload["exp"] = datetime.now(UTC) + expires_delta
+    payload["exp"] = get_current_utc_time() + expires_delta
 
     return jwt.encode(header=header, payload=payload, key=key.get_secret_value()).decode("utf-8")
 

@@ -6,12 +6,15 @@ Date   : 2025-03-12
 """
 
 import time
+from datetime import datetime
 from typing import Any, Generic, TypeVar
+from uuid import UUID
 
 from fastapi import status
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, field_serializer
 
-from .base import BaseModel
+from src.schemas import BaseModel
+from src.utils.date import convert_datetime_to_gmt
 
 T = TypeVar("T")
 
@@ -20,6 +23,29 @@ class BaseResponse(BaseModel):
     """Base response model."""
 
     model_config = ConfigDict(**(BaseModel.model_config or {}), from_attributes=True)
+
+
+class ResponseSchema(BaseResponse):
+    """Response schema."""
+
+    id: UUID
+    create_time: datetime = Field(examples=["2024-07-31 16:07:34"])
+    update_time: datetime = Field(examples=["2024-07-31 16:07:34"])
+
+    @field_serializer("create_time", "update_time")
+    def serialize_datetime(self, value: datetime) -> str:
+        """
+        Pydantic serializer for datetime fields.
+
+        Converts datetime fields to GMT string format when serializing to JSON.
+
+        Args:
+            value: datetime value to serialize
+
+        Returns:
+            String representation of datetime in GMT
+        """
+        return convert_datetime_to_gmt(value)
 
 
 class Response(BaseResponse, Generic[T]):

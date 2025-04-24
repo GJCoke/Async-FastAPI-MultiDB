@@ -7,7 +7,7 @@ Author : Coke
 Date   : 2025-03-18
 """
 
-from typing import Any, Generic, Literal, TypeVar, cast, overload
+from typing import Any, Generic, Literal, Sequence, TypeVar, cast, overload
 from uuid import UUID
 
 from beanie import PydanticObjectId
@@ -16,7 +16,7 @@ from beanie.operators import In
 from motor.motor_asyncio import AsyncIOMotorClientSession
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import ColumnElement
-from sqlmodel import func, select
+from sqlmodel import delete, func, select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.exceptions import ExistsException, NotFoundException
@@ -39,16 +39,19 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
     This class provides generic CRUD operations for SQLModel models.
     """
 
-    def __init__(self, model: type[SQLModel], *, session: AsyncSession | None = None) -> None:
+    def __init__(self, model: type[SQLModel], *, session: AsyncSession | None = None, auto_commit: bool = True) -> None:
         """
         Initialize the BaseSQLModelCRUD with a SQLModel.
 
         Args:
             model (type[SQLModel]): The SQLModel class for the CRUD operations.
+            session (AsyncSession | None): The SQLAlchemy session used for the CRUD operations.
+            auto_commit (bool): Whether to automatically commit the changes.
         """
 
         self._model = model
         self._session = session
+        self.auto_commit = auto_commit
 
     @property
     def model(self) -> type[SQLModel]:
@@ -75,6 +78,19 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         if self._session is None:
             raise RuntimeError("Session is not initialized.")
         return self._session
+
+    async def commit(self, auto_commit: bool = True) -> None:
+        """
+        Commit the current transaction to the database.
+
+        Args:
+            auto_commit (bool): If True, automatically commit the transaction.
+                If False, you need to commit manually after calling this method.
+                Defaults to True.
+        """
+        auto_commit = auto_commit or self.auto_commit
+        if auto_commit:
+            await self.session.commit()
 
     @overload
     async def get(
@@ -242,6 +258,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         *,
         validate: bool = True,
         session: AsyncSession | None = None,
+        auto_commit: bool = False,
     ) -> SQLModel:
         """
         Create a new record in the database.
@@ -249,8 +266,9 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         Args:
             create_in (UpdateSchemaType | SQLModel | dict[str, Any]): Data to create the new record.
                 Can be a Pydantic schema, SQLModel instance, or raw dictionary.
-            validate (bool, optional): Whether to validate input data before creation. Defaults to True.
+            validate (bool): Whether to validate input data before creation. Defaults to True.
             session (AsyncSession | None): SQLAlchemy async session for database operations.
+            auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
 
         Returns:
             SQLModel: The newly created model instance.
@@ -270,7 +288,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             session.add(create_in)
             await session.flush()
 
-            await session.commit()
+            await self.commit(auto_commit=auto_commit)
             await session.refresh(create_in)
         except IntegrityError:
             await session.rollback()
@@ -278,12 +296,51 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
         return create_in
 
+    async def create_all(
+        self,
+        create_in: Sequence[CreateSchema | SQLModel],
+        *,
+        session: AsyncSession | None = None,
+        auto_commit: bool = False,
+    ) -> None:
+        """
+        Asynchronously create multiple records in the database.
+
+        This method accepts a list of data (either as Pydantic schemas or SQLModel instances) and creates
+        corresponding records in the database. The records will be validated using the model's schema
+        before being added to the session.
+
+        Args:
+            create_in (list[CreateSchema | SQLModel]): A list of data used to create the new records.
+                Each item can be a Pydantic schema or an SQLModel instance, and it will be validated
+                before insertion.
+            session (AsyncSession | None): An optional SQLAlchemy `AsyncSession` instance used to
+                manage database transactions. If not provided, the method will use the default session.
+            auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
+
+        Raises:
+            ExistsException: If a record with conflicting unique constraints (e.g., duplicate entries)
+                already exists in the database, the operation will raise an `ExistsException`.
+        """
+        session = session or self.session
+        create_in = [self.model.model_validate(create_item) for create_item in create_in]
+
+        try:
+            session.add_all(create_in)
+            await session.flush()
+
+            await self.commit(auto_commit=auto_commit)
+        except IntegrityError:
+            await session.rollback()
+            raise ExistsException()
+
     async def update(
         self,
         current_model: SQLModel,
         update_in: UpdateSchema | SQLModel | dict[str, Any],
         *,
         session: AsyncSession | None = None,
+        auto_commit: bool = False,
     ) -> SQLModel:
         """
         Update an existing model instance with new data.
@@ -293,6 +350,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             update_in (UpdateSchemaType | SQLModel | dict[str, Any]): Update data. Can be schema, model, or dict.
                 Only set fields will be updated.
             session (AsyncSession | None): SQLAlchemy async session.
+            auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
 
         Returns:
             SQLModel: The updated model instance.
@@ -308,7 +366,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         for field, value in update_in.items():
             setattr(current_model, field, value)
 
-        response = await self.create(current_model, validate=False, session=session)
+        response = await self.create(current_model, validate=False, session=session, auto_commit=auto_commit)
         return response
 
     async def update_by_id(
@@ -318,6 +376,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         update_in: UpdateSchema | dict[str, Any],
         *,
         session: AsyncSession | None = None,
+        auto_commit: bool = False,
     ) -> SQLModel:
         """
         Update a record by its primary key.
@@ -326,6 +385,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             _id (UUID): Primary key of the record to update.
             update_in (UpdateSchema | dict[str, Any]): Update data.
             session (AsyncSession | None): SQLAlchemy async session.
+            auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
 
         Returns:
             SQLModel: The updated model instance.
@@ -335,21 +395,41 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         """
         session = session or self.session
         response = await self.get(_id, nullable=False, session=session)
-        return await self.update(response, update_in, session=session)
+        return await self.update(response, update_in, session=session, auto_commit=auto_commit)
 
-    async def delete(
-        self,
-        _id: UUID,
-        /,
-        *,
-        session: AsyncSession | None = None,
-    ) -> SQLModel:
+    async def update_all(
+        self, update_in: list[dict[str, Any]], *, session: AsyncSession | None = None, auto_commit: bool = False
+    ) -> None:
+        """
+        Update a record by its primary key.  TODO: need opt.
+
+        Args:
+            update_in (list[dict[str, Any]]): Update data.
+            session (AsyncSession | None): SQLAlchemy async session.
+            auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
+
+        Raises:
+            NotFoundException: If no record exists with the specified ID.
+        """
+        session = session or self.session
+        for update_info in update_in:
+            _id = update_info.pop("id")
+            if not _id:
+                raise ValueError("Need id for update.")
+
+            statement = update(self.model).filter(self.model.id == _id).values(**update_info)
+            await session.exec(statement)  # type: ignore
+
+        await self.commit(auto_commit=auto_commit)
+
+    async def delete(self, _id: UUID, /, *, session: AsyncSession | None = None, auto_commit: bool = False) -> SQLModel:
         """
         Delete a record from the database by its primary key.
 
         Args:
             _id (UUID): The primary key of the record to delete.
             session (AsyncSession | None): SQLAlchemy session.
+            auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
 
         Returns:
             SQLModel: The deleted record.
@@ -360,8 +440,26 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         session = session or self.session
         response = await self.get(_id, nullable=False, session=session)
         await session.delete(response)
-        await session.commit()
+        await self.commit(auto_commit=auto_commit)
         return response
+
+    async def delete_all(
+        self, ids: list[UUID], /, *, session: AsyncSession | None = None, auto_commit: bool = True
+    ) -> None:
+        """
+        Asynchronously delete multiple records from the database by their primary keys.
+
+        This method will delete all records in the database that match the provided list of primary keys (`ids`).
+
+        Args:
+            ids (list[UUID]): A list of primary keys (UUIDs) of the records to delete.
+            session (AsyncSession | None): An optional SQLAlchemy `AsyncSession`
+            auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
+        """
+        session = session or self.session
+
+        await session.exec(delete(self.model).filter(self.model.id.in_(ids)))  # type: ignore
+        await self.commit(auto_commit=auto_commit)
 
 
 class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
@@ -434,7 +532,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
         Args:
             _id (PydanticObjectId): The document ID.
-            nullable (bool, optional): Whether to allow a None response. Defaults to True.
+            nullable (bool): Whether to allow a None response. Defaults to True.
             session (AsyncIOMotorClientSession | None): Motor client async session.
 
         Returns:
@@ -522,9 +620,9 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
         Args:
             *args (dict[str, Any] | bool): Query filters.
-            page (int, optional): Page number. Defaults to 1.
-            size (int, optional): Page size. Defaults to 20.
-            order_by (str | tuple[str, int] | list[tuple[str, int]] | None, optional): Sorting order. Defaults to None.
+            page (int): Page number. Defaults to 1.
+            size (int): Page size. Defaults to 20.
+            order_by (str | tuple[str, int] | list[tuple[str, int]] | None): Sorting order. Defaults to None.
             session (AsyncIOMotorClientSession | None): Motor client async session.
 
         Returns:
