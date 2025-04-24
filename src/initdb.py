@@ -26,7 +26,7 @@ roles: list[RoleCreate] = [
 
 users: list[UserCreate] = [
     UserCreate(
-        name="admin", email="admin@gmail.com", username="admin", password="123456", is_admin=False, roles=["ADMIN"]
+        name="admin", email="admin@gmail.com", username="admin", password="123456", is_admin=True, roles=["ADMIN"]
     ),  # type: ignore
 ]
 
