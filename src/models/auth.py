@@ -20,5 +20,20 @@ class User(SQLModel, table=True):
     email: EmailStr
     username: str
     password: bytes
+    status: bool = True
     is_admin: bool = False
     roles: list[str] = Field([], sa_column=Column(JSON))
+
+
+class Role(SQLModel, table=True):
+    """Role model."""
+
+    __tablename__ = "roles"
+
+    name: str
+    description: str
+    code: str
+    status: bool = True
+    interface_permissions: list[str] = Field([], sa_column=Column(JSON))
+    button_permissions: list[str] = Field([], sa_column=Column(JSON))
+    router_permissions: list[str] = Field([], sa_column=Column(JSON))

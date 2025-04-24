@@ -191,6 +191,7 @@ async def user_login(
     Returns:
         TokenResponse: JWT access and refresh tokens.
     """
+    # TODO: add user permission by redis.
 
     user_info = await user_crud.get_user_by_username(username)
 

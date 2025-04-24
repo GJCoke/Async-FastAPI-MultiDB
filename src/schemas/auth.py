@@ -77,6 +77,7 @@ class UserInfoResponse(UserSchema, ResponseSchema):
 class UserCreate(UserSchema, BaseRequest):
     """Create user schemas request."""
 
+    is_admin: bool = False
     password: str
 
 
