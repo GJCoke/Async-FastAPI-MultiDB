@@ -1,6 +1,6 @@
 <div align="center">
   <h1>Async-FastAPI-MultiDB</h1>
-  <span><a href="./README-CN.md">English</a> | 中文</span>
+  <span><a href="./README.md">English</a> | 中文</span>
 </div>
 
 Async-FastAPI-MultiDB 是一个异步 FastAPI 模板项目，旨在无缝集成 SQL (如 PostgreSQL, MySQL) 和 NoSQL (如 MongoDB) 数据库。该模板提供了一种现代化且高效的 Web 框架解决方案，支持异步请求处理，非常适合用于构建可扩展的 API 服务。

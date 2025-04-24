@@ -93,7 +93,7 @@ This module handles authentication and authorization, built upon JWT + Redis + R
 - Token logout
 - Encapsulated user info injection via dependency
 - Environment-based restrictions (e.g., Debug-only features)
-- RBAC Access Control Model
+- RBAC access control model
 
 ### Password Encryption (RSA)
 
@@ -145,7 +145,7 @@ During login, the frontend encrypts the password using the RSA public key provid
 - Stored Key: `auth:refresh:<{user_id}>:<{jti}>`
 - Stored Value: A serialized RefreshToken object, including fields like `created_at`, `refresh_token`, and `user-agent`
 - Stored Key: `auth:permission:<{user_id}>`
-- Stored Value: Current User's Permission Code
+- Stored Value: Current user's permission code
 
 > This structure is extensible — you can include IP address verification, device ID, platform identifier, restrict refresh sources, or implement multi-device login control strategies.
 
