@@ -102,7 +102,7 @@ class PaginatedResponse(BaseResponse, Generic[T]):
     page: int = Field(..., description="page number.")
     page_size: int = Field(..., description="number of items per page.")
     total: int = Field(..., description="total number of items.")
-    records: list[T] = Field([], description="records.")
+    records: list[T] = Field(..., description="records.")
 
 
 class BadRequestResponse(Response):

@@ -5,6 +5,7 @@ Author  : Coke
 Date    : 2025-04-24
 """
 
+from sqlmodel import col
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.crud.base import BaseSQLModelCRUD
@@ -28,5 +29,5 @@ class RoleCRUD(BaseSQLModelCRUD[Role, RoleCreate, RoleUpdate]):
             List[Role]: A list of `Role` objects that match the given role codes.
         """
         session = session or self.session
-        roles = await self.get_all(self.model.code.in_(codes), session=session)  # type: ignore
+        roles = await self.get_all(col(self.model.code).in_(codes), session=session)
         return roles

@@ -17,8 +17,8 @@ class User(SQLModel, table=True):
     __tablename__ = "users"
 
     name: str
-    email: EmailStr
-    username: str
+    email: EmailStr = Field(..., unique=True)
+    username: str = Field(..., unique=True)
     password: bytes
     status: bool = True
     is_admin: bool = False
@@ -30,9 +30,9 @@ class Role(SQLModel, table=True):
 
     __tablename__ = "roles"
 
-    name: str
+    name: str = Field(..., unique=True)
     description: str
-    code: str
+    code: str = Field(..., unique=True)
     status: bool = True
     interface_permissions: list[str] = Field([], sa_column=Column(JSON))
     button_permissions: list[str] = Field([], sa_column=Column(JSON))
