@@ -10,7 +10,7 @@ Author : Coke
 Date   : 2025-04-18
 """
 
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.exceptions import BadRequestException
@@ -40,8 +40,8 @@ class UserCRUD(BaseSQLModelCRUD[User, UserCreate, UserUpdate]):
 
         session = session or self.session
 
-        statement = select(self.model).where(self.model.username == username)
-        result = await session.exec(statement)  # type: ignore
+        statement = select(self.model).filter(col(self.model.username) == username)
+        result = await session.exec(statement)
         response = result.first()
 
         if not response:
