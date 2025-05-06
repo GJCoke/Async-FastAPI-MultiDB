@@ -14,9 +14,11 @@ from beanie import PydanticObjectId
 from beanie.odm.enums import SortDirection
 from beanie.operators import In
 from motor.motor_asyncio import AsyncIOMotorClientSession
+from pydantic import BaseModel as PydanticBaseModel
+from sqlalchemy import ColumnExpressionArgument
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import ColumnElement
-from sqlmodel import delete, func, select, update
+from sqlmodel import col, delete, func, select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.exceptions import ExistsException, NotFoundException
@@ -30,6 +32,7 @@ Document = TypeVar("Document", bound=_Document)
 CreateSchema = TypeVar("CreateSchema", bound=BaseModel)
 UpdateSchema = TypeVar("UpdateSchema", bound=BaseModel)
 T = TypeVar("T", bound=_SQLModel)
+_PydanticBaseModel = TypeVar("_PydanticBaseModel", bound=PydanticBaseModel)
 
 
 class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
@@ -145,8 +148,8 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             NotFoundException: If nullable is False and the record is not found in the database.
         """
         session = session or self.session
-        statement = select(self.model).where(self.model.id == _id)
-        result = await session.exec(statement)  # type: ignore
+        statement = select(self.model).filter(col(self.model.id) == _id)
+        result = await session.exec(statement)
         response = result.first()
 
         if not nullable and not response:
@@ -154,40 +157,78 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
         return response
 
+    @overload
+    async def get_by_ids(
+        self, ids: list[UUID], *, session: AsyncSession | None = None, serializer: type[_PydanticBaseModel]
+    ) -> list[_PydanticBaseModel]: ...
+
+    @overload
     async def get_by_ids(
         self,
         ids: list[UUID],
         *,
         session: AsyncSession | None = None,
-    ) -> list[SQLModel]:
+        serializer: Literal[None] = None,
+    ) -> list[SQLModel]: ...
+
+    async def get_by_ids(
+        self,
+        ids: list[UUID],
+        *,
+        session: AsyncSession | None = None,
+        serializer: type[_PydanticBaseModel] | None = None,
+    ) -> list[SQLModel] | list[_PydanticBaseModel]:
         """
         Retrieve multiple records from the database by a list of primary keys.
 
         Args:
             ids (list[UUID]): List of primary keys to retrieve.
             session (AsyncSession | None): SQLAlchemy async session.
+            serializer (type[_PydanticBaseModel]): Optional Pydantic model class used to
+             serialize ORM records into validated output.
 
         Returns:
             list[SQLModel]: A list of retrieved records, or an empty list if none are found.
         """
         session = session or self.session
-        statement = select(self.model).filter(self.model.id.in_(ids))  # type: ignore
+        statement = select(self.model).filter(col(self.model.id).in_(ids))
         result = await session.exec(statement)
         response = cast(list[SQLModel], result.all())
 
-        return response or []
+        if serializer is not None:
+            return [serializer.model_validate(item) for item in response]
+        return response
+
+    @overload
+    async def get_all(
+        self,
+        *args: ColumnElement[Any],
+        session: AsyncSession | None = None,
+        serializer: type[_PydanticBaseModel],
+    ) -> list[_PydanticBaseModel]: ...
+
+    @overload
+    async def get_all(
+        self,
+        *args: ColumnElement[Any],
+        session: AsyncSession | None = None,
+        serializer: Literal[None] = None,
+    ) -> list[SQLModel]: ...
 
     async def get_all(
         self,
         *args: ColumnElement[Any],
         session: AsyncSession | None = None,
-    ) -> list[SQLModel]:
+        serializer: type[_PydanticBaseModel] | None = None,
+    ) -> list[SQLModel] | list[_PydanticBaseModel]:
         """
         Retrieve all records from the database, with optional filters.
 
         Args:
             args (list[ColumnElement[Any]]): Optional list of filters to apply to the query.
             session (AsyncSession): SQLAlchemy async session.
+            serializer (type[_PydanticBaseModel]): Optional Pydantic model class used to
+             serialize ORM records into validated output.
 
         Returns:
             list[SQLModel]: A list of all records matching the filters.
@@ -196,18 +237,21 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         statement = select(self.model).filter(*args)
         result = await session.exec(statement)
         response = cast(list[SQLModel], result.all())
+
+        if serializer is not None:
+            return [serializer.model_validate(item) for item in response]
         return response
 
     async def get_count(
         self,
-        *args: ColumnElement[Any],
+        *args: ColumnExpressionArgument[bool],
         session: AsyncSession | None = None,
     ) -> int:
         """
         Retrieve the count of records in the database, with optional filters.
 
         Args:
-            args (list[ColumnElement[Any]]): Optional list of filters to apply to the query.
+            args (list[ColumnExpressionArgument[bool]]): Optional list of filters to apply to the query.
             session (AsyncSession | None): SQLAlchemy async session.
 
         Returns:
@@ -219,23 +263,48 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
         return response.one()
 
+    @overload
     async def get_paginate(
         self,
-        *args: ColumnElement[Any],
+        *args: ColumnExpressionArgument[bool],
         page: int = 1,
         size: int = 20,
         order_by: ColumnElement[Any] | Any | None = None,
         session: AsyncSession | None = None,
-    ) -> PaginatedResponse[SQLModel]:
+        serializer: type[_PydanticBaseModel],
+    ) -> PaginatedResponse[_PydanticBaseModel]: ...
+
+    @overload
+    async def get_paginate(
+        self,
+        *args: ColumnExpressionArgument[bool],
+        page: int = 1,
+        size: int = 20,
+        order_by: ColumnElement[Any] | Any | None = None,
+        session: AsyncSession | None = None,
+        serializer: Literal[None] = None,
+    ) -> PaginatedResponse[SQLModel]: ...
+
+    async def get_paginate(
+        self,
+        *args: ColumnExpressionArgument[bool],
+        page: int = 1,
+        size: int = 20,
+        order_by: ColumnElement[Any] | Any | None = None,
+        session: AsyncSession | None = None,
+        serializer: type[_PydanticBaseModel] | None = None,
+    ) -> PaginatedResponse[SQLModel] | PaginatedResponse[_PydanticBaseModel]:
         """
         Retrieve a paginated list of records from the database with optional filters and ordering.
 
         Args:
-            args (list[ColumnElement[Any]]): Optional list of filters to apply to the query.
+            args (list[ColumnExpressionArgument[bool]]): Optional list of filters to apply to the query.
             page (int): The page number to retrieve.
             size (int): The number of records per page.
             order_by (ColumnElement[Any] | None): Optional column element to order the results.
             session (AsyncSession | None): SQLAlchemy async session.
+            serializer (type[_PydanticBaseModel]): Optional Pydantic model class used to
+             serialize ORM records into validated output.
 
         Returns:
             PaginatedResponse[SQLModel]: A paginated response containing the records and metadata.
@@ -249,6 +318,14 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         result = await session.exec(statement)
         response = cast(list[SQLModel], result.all() or [])
         total = await self.get_count(*args, session=session)
+
+        if serializer is not None:
+            return PaginatedResponse(
+                records=[serializer.model_validate(item) for item in response],
+                total=total,
+                page=page,
+                page_size=size,
+            )
 
         return PaginatedResponse(records=response, total=total, page=page, page_size=size)
 
@@ -361,7 +438,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         """
         session = session or self.session
         if not isinstance(update_in, dict):
-            update_in = update_in.serializable_dict(exclude_unset=True)
+            update_in = update_in.serializable_dict(exclude_unset=True, by_alias=False)
 
         for field, value in update_in.items():
             setattr(current_model, field, value)
@@ -417,7 +494,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             if not _id:
                 raise ValueError("Need id for update.")
 
-            statement = update(self.model).filter(self.model.id == _id).values(**update_info)
+            statement = update(self.model).filter(col(self.model.id) == _id).values(**update_info)
             await session.exec(statement)  # type: ignore
 
         await self.commit(auto_commit=auto_commit)
@@ -457,8 +534,8 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
         """
         session = session or self.session
-
-        await session.exec(delete(self.model).filter(self.model.id.in_(ids)))  # type: ignore
+        statement = delete(self.model).filter(col(self.model.id).in_(ids))
+        await session.exec(statement)  # type: ignore
         await self.commit(auto_commit=auto_commit)
 
 

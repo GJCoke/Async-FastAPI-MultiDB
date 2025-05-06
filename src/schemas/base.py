@@ -7,7 +7,6 @@ Author : Coke
 Date   : 2025-03-24
 """
 
-from fastapi.encoders import jsonable_encoder
 from pydantic import AliasGenerator, ConfigDict
 from pydantic import BaseModel as _BaseModel
 from pydantic.alias_generators import to_camel
@@ -66,7 +65,9 @@ class BaseModel(_BaseModel):
         Returns:
             dict: A JSON-serializable dictionary representation of the model.
         """
-        default_dict = self.model_dump(
+
+        return self.model_dump(
+            mode="json",
             include=include,
             exclude=exclude,
             by_alias=by_alias,
@@ -74,5 +75,3 @@ class BaseModel(_BaseModel):
             exclude_defaults=exclude_defaults,
             exclude_none=exclude_none,
         )
-
-        return jsonable_encoder(default_dict)

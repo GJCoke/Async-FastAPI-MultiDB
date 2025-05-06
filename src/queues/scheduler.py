@@ -15,7 +15,7 @@ from celery.beat import Scheduler as _Scheduler
 from celery.utils.log import get_logger
 from kombu import Producer
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import select
+from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.queues.celery import Celery
@@ -155,15 +155,13 @@ class AsyncDatabaseScheduler(Scheduler):
             dict[str, ScheduleEntry]
         """
         async with self.AsyncSessionLocal() as session:
-            _tasks = await session.exec(
-                select(PeriodicTask).where(PeriodicTask.enabled.is_(True))  # type: ignore
-            )
+            _tasks = await session.exec(select(PeriodicTask).filter(col(PeriodicTask.enabled).is_(True)))
             tasks: Sequence[PeriodicTask] = _tasks.all()
 
             celery_beat = {}
             for task in tasks:
                 _schedule_info = await session.exec(
-                    select(task.task_type.model).where(task.task_type.model.id == task.schedule_id)  # type: ignore
+                    select(task.task_type.model).filter(col(task.task_type.model.id) == task.schedule_id)
                 )
                 schedule_info = _schedule_info.first()
                 if schedule_info:

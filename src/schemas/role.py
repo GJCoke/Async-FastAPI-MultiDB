@@ -6,6 +6,7 @@ Date    : 2025-04-24
 from uuid import UUID
 
 from src.schemas import BaseModel, BaseRequest, ResponseSchema
+from src.schemas.request import BatchRequest, PaginatedRequest
 
 
 class RoleSchema(BaseModel):
@@ -23,6 +24,8 @@ class RoleSchema(BaseModel):
 class RoleResponse(RoleSchema, ResponseSchema):
     """Role response schema."""
 
+    id: UUID
+
 
 class RoleCreate(RoleSchema, BaseRequest):
     """Create role schema."""
@@ -31,4 +34,21 @@ class RoleCreate(RoleSchema, BaseRequest):
 class RoleUpdate(RoleSchema, BaseRequest):
     """Update role schema."""
 
-    id: UUID
+
+class RoleQueriesSchema(BaseModel):
+    """Queries role schema."""
+
+    keyword: str = ""
+    status: bool | None = None
+
+
+class RolePageQuery(RoleQueriesSchema, PaginatedRequest):
+    """Queries page role schema."""
+
+
+class RoleAllQuery(RoleQueriesSchema):
+    """Queries all role schema."""
+
+
+class RoleBatchBody(BatchRequest):
+    """Queries batch role schema."""
