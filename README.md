@@ -1,4 +1,5 @@
 <div align="center">
+  <img src="./docs/images/logo.svg" width="160" alt="FastAPI">
   <h1>Async-FastAPI-MultiDB</h1>
   <span>English | <a href="./README-CN.md">中文</a></span>
 </div>
@@ -30,6 +31,81 @@ This is a production-ready asynchronous backend template built with FastAPI, fea
   - High-performance Permission Validation Mechanism
 
 > 🚧 This project is under active development. Feel free to follow, star the repo, or contribute via issues and PRs.
+
+## Async-FastAPI-MultiDB Project Architecture Overview
+![overview](docs/images/overview.png)
+
+This document provides a basic architectural overview of a FastAPI project, aiming to help developers understand the project's organization and the functionality of each module. Through a detailed analysis of the project structure, readers can quickly grasp how to build and maintain an efficient FastAPI application.
+
+### Project Structure
+![architecture-cn](/docs/images/architecture.png)
+
+### Directory Structure Description
+```
+src/
+│
+├── api/                  # API route definitions, organized by version
+│   ├── v1/               # v1 version APIs
+│   │   ├── auth.py       # Login, registration, and permission-related APIs
+│   │   └── router.py     # v1 route aggregation
+│   └── v2/               # Reserved or under development for v2
+│       └── __init__.py
+│
+├── core/                 # Core functionality modules
+│   ├── config.py         # Load environment variables and manage Settings
+│   ├── database.py       # Database connections (SQLModel, Mongo, etc.)
+│   ├── environment.py    # Environment detection (e.g., dev/test/prod)
+│   ├── exceptions.py     # Custom exception classes
+│   ├── lifecycle.py      # FastAPI application lifecycle events
+│   └── route.py          # Support for dynamic route registration
+│
+├── crud/                 # Direct CRUD operations for the database
+│   └── router.py         # Example or common DB operations
+│
+├── deps/                 # FastAPI dependencies (used with Depends)
+│   ├── auth.py           # Permission/role validation dependencies
+│   ├── database.py       # DB connection dependencies
+│   ├── environment.py    # Environment-related dependencies
+│   ├── role.py           # Role-based permission injection
+│   └── router.py         # Route-level dependencies
+│
+├── models/               # Database model definitions
+│   ├── auth.py           # Tables for users, permissions, etc.
+│   ├── base.py           # Common base classes (timestamps, ID, etc.)
+│   └── router.py         # Route model definitions (e.g., permission routes)
+│
+├── queues/               # Celery async task modules
+│   ├── tasks/            # Task definitions
+│   │   └── tasks.py      # Sample async task collection
+│   ├── app.py            # Celery instance creation
+│   ├── celery.py         # Celery startup entry point
+│   ├── models.py         # Models related to async tasks (e.g., task logs)
+│   ├── scheduler.py      # Scheduled task scheduler
+│   └── task.py           # Task registration and encapsulation
+│
+├── schemas/              # Request/response data structure definitions
+│   ├── auth.py           # Models for login, registration, etc.
+│   ├── base.py           # Common field models
+│   ├── request.py        # Request data models
+│   ├── response.py       # Response models (standard format)
+│   ├── role.py           # Role-related schemas
+│   └── router.py         # Route/API-related schemas
+│
+├── services/             # Business logic layer
+│   └── auth.py           # User authentication services (login validation, token generation, etc.)
+│
+├── utils/                # Utility method collections
+│   ├── constants.py      # Global constant definitions
+│   ├── date.py           # Date/time handling functions
+│   ├── minio_client.py   # MinIO object storage wrapper
+│   ├── security.py       # Encryption and JWT utilities
+│   ├── uuid7.py          # Custom UUID utilities
+│   └── validate.py       # Field/form validation utilities
+│
+├── initdb.py             # Database initialization script (e.g., table creation, insert default data)
+├── main.py               # FastAPI application entry point
+
+```
 
 ## Installation
 

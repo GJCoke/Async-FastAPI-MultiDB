@@ -1,4 +1,5 @@
 <div align="center">
+  <img src="./docs/images/logo.svg" width="160" alt="FastAPI">
   <h1>Async-FastAPI-MultiDB</h1>
   <span><a href="./README.md">English</a> | 中文</span>
 </div>
@@ -29,6 +30,81 @@
   - 高性能权限校验机制
 
 > 🚧 本项目持续开发中，欢迎关注、Star 或提出 Issue 与 PR。
+
+---
+
+## Async-FastAPI-MultiDB 项目架构概览
+![overview](docs/images/overview.png)
+
+本文档提供了一个 FastAPI 项目的基本架构概览，旨在帮助开发者理解项目的组织结构及各个模块的功能。通过对项目目录的详细解析，读者可以快速掌握如何构建和维护一个高效的 FastAPI 应用。
+
+### 项目结构
+![architecture-cn](/docs/images/architecture-cn.png)
+### 目录结构说明
+```
+src/
+│
+├── api/                  # 接口路由定义层，按版本组织
+│   ├── v1/               # v1 版本接口
+│   │   ├── auth.py       # 登录、注册、权限相关接口
+│   │   └── router.py     # v1 路由汇总
+│   └── v2/               # v2 版本预留或开发中
+│       └── __init__.py
+│
+├── core/                 # 核心功能模块
+│   ├── config.py         # 读取环境变量、Settings 管理
+│   ├── database.py       # 数据库连接（SQLModel、Mongo 等）
+│   ├── environment.py    # 运行环境检测（如是否 dev/test/prod）
+│   ├── exceptions.py     # 自定义异常类
+│   ├── lifecycle.py      # FastAPI 应用生命周期事件
+│   └── route.py          # 动态路由注册支持
+│
+├── crud/                 # 直接面向数据库的 CRUD 操作
+│   └── router.py         # 示例或通用数据库操作
+│
+├── deps/                 # FastAPI 依赖项（Depends 使用）
+│   ├── auth.py           # 权限/角色依赖校验
+│   ├── database.py       # DB 连接依赖
+│   ├── environment.py    # 环境相关依赖
+│   ├── role.py           # 角色权限注入
+│   └── router.py         # 路由级依赖
+│
+├── models/               # 数据库模型定义
+│   ├── auth.py           # 用户、权限等表结构
+│   ├── base.py           # 通用基类，如时间戳、ID 等
+│   └── router.py         # 路由模型定义（如权限路由表）
+│
+├── queues/               # Celery 异步任务模块
+│   ├── tasks/            # 任务定义
+│   │   └── tasks.py      # 示例异步任务集合
+│   ├── app.py            # Celery 实例创建
+│   ├── celery.py         # Celery 启动入口
+│   ├── models.py         # 与异步任务相关的模型（如任务记录表）
+│   ├── scheduler.py      # 定时任务调度器
+│   └── task.py           # 任务注册、封装
+│
+├── schemas/              # 请求/响应数据结构定义
+│   ├── auth.py           # 用户登录、注册等模型
+│   ├── base.py           # 通用字段模型
+│   ├── request.py        # 请求结构体
+│   ├── response.py       # 响应结构体（统一格式）
+│   ├── role.py           # 角色相关 schema
+│   └── router.py         # 路由/接口相关 schema
+│
+├── services/             # 业务逻辑层
+│   └── auth.py           # 用户认证服务（登录校验、发 token 等）
+│
+├── utils/                # 工具方法集合
+│   ├── constants.py      # 全局常量定义
+│   ├── date.py           # 时间处理函数
+│   ├── minio_client.py   # MinIO 对象存储封装
+│   ├── security.py       # 加密、JWT 工具
+│   ├── uuid7.py          # 自定义 UUID 工具
+│   └── validate.py       # 字段、表单验证工具
+│
+├── initdb.py             # 数据库初始化脚本（如建表、插入默认数据）
+├── main.py               # FastAPI 应用主入口
+```
 
 ---
 

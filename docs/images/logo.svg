@@ -1,0 +1,19 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="100" cy="100" r="90" fill="#0a192f" />
+
+  <path d="M100 40L70 100H90L60 160L140 100H110L130 60Z" fill="url(#gradient)">
+    <animate attributeName="opacity" values="0.7;1;0.7" dur="3s" repeatCount="indefinite"/>
+  </path>
+
+  <circle cx="100" cy="100" r="55" stroke="#00d4ff" stroke-width="2" fill="none" opacity="0.8">
+    <animateTransform attributeName="transform" type="scale" values="1;1.05;1" dur="4s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="100" cy="100" r="35" stroke="#00d4ff" stroke-width="1.5" fill="none" opacity="0.6"/>
+
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00d4ff" />
+      <stop offset="100%" stop-color="#00ffaa" />
+    </linearGradient>
+  </defs>
+</svg>
