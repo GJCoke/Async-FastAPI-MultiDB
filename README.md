@@ -168,6 +168,7 @@ This module handles authentication and authorization, built upon JWT + Redis + R
 <div align="center">
   <img src="./docs/images/rbac.svg" alt="FastAPI">
 </div>
+
 ### Features Overview
 
 - User login via username and password
