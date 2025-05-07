@@ -33,7 +33,9 @@ This is a production-ready asynchronous backend template built with FastAPI, fea
 > 🚧 This project is under active development. Feel free to follow, star the repo, or contribute via issues and PRs.
 
 ## Async-FastAPI-MultiDB Project Architecture Overview
-![architecture](/docs/images/architecture.svg)
+<div align="center">
+  <img src="./docs/images/architecture.svg" alt="FastAPI">
+</div>
 
 This document provides a basic architectural overview of a FastAPI project, aiming to help developers understand the project's organization and the functionality of each module. Through a detailed analysis of the project structure, readers can quickly grasp how to build and maintain an efficient FastAPI application.
 

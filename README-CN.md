@@ -34,7 +34,9 @@
 ---
 
 ## Async-FastAPI-MultiDB 项目架构概览
-![architecture-cn](/docs/images/architecture-cn.svg)
+<div align="center">
+  <img src="./docs/images/architecture-cn.svg" alt="FastAPI">
+</div>
 
 本文档提供了一个 FastAPI 项目的基本架构概览，旨在帮助开发者理解项目的组织结构及各个模块的功能。通过对项目目录的详细解析，读者可以快速掌握如何构建和维护一个高效的 FastAPI 应用。
 
