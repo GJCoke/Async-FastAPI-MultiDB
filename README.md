@@ -163,7 +163,7 @@ src/
 ## Auth Module Overview
 
 This module handles authentication and authorization, built upon JWT + Redis + RSA + RBAC.
-
+![rbac](docs/images/rbac.svg)
 ### Features Overview
 
 - User login via username and password
