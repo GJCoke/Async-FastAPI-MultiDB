@@ -15,6 +15,9 @@ from src.schemas.auth import UserCreate
 from src.schemas.role import RoleCreate
 from src.utils.security import hash_password
 
+USERNAME = "admin"
+PASSWORD = "123456"
+
 roles: list[RoleCreate] = [
     RoleCreate(
         name="admin",
@@ -26,7 +29,7 @@ roles: list[RoleCreate] = [
 
 users: list[UserCreate] = [
     UserCreate(
-        name="admin", email="admin@gmail.com", username="admin", password="123456", is_admin=True, roles=["ADMIN"]
+        name="admin", email="admin@gmail.com", username=USERNAME, password=PASSWORD, is_admin=True, roles=["ADMIN"]
     ),  # type: ignore
 ]
 

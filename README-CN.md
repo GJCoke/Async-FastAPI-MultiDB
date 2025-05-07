@@ -161,7 +161,9 @@ src/
 ## Auth 模块说明
 
 本模块用于处理认证授权、鉴权相关功能，基于 JWT + Redis + RSA + RBAC 实现。
-![rbac-cn](docs/images/rbac-cn.svg)
+<div align="center">
+  <img src="./docs/images/rbac-cn.svg" alt="FastAPI">
+</div>
 ### 功能概述
 
 - 用户登录（用户名密码）
