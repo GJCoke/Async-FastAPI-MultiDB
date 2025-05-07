@@ -5,10 +5,15 @@
     <animate attributeName="opacity" values="0.7;1;0.7" dur="3s" repeatCount="indefinite"/>
   </path>
 
-  <circle cx="100" cy="100" r="55" stroke="#00d4ff" stroke-width="2" fill="none" opacity="0.8">
-    <animateTransform attributeName="transform" type="scale" values="1;1.05;1" dur="4s" repeatCount="indefinite"/>
+  <circle cx="100" cy="100" r="35" stroke="#00d4ff" stroke-width="2" fill="none" opacity="0.5">
+    <animate attributeName="r" values="35;70" dur="3s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="0.5;0" dur="3s" repeatCount="indefinite" />
   </circle>
-  <circle cx="100" cy="100" r="35" stroke="#00d4ff" stroke-width="1.5" fill="none" opacity="0.6"/>
+
+  <circle cx="100" cy="100" r="35" stroke="#00d4ff" stroke-width="2" fill="none" opacity="0.5">
+    <animate attributeName="r" values="35;70" dur="3s" begin="1.5s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="0.5;0" dur="3s" begin="1.5s" repeatCount="indefinite" />
+  </circle>
 
   <defs>
     <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
