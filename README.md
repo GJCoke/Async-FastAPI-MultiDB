@@ -33,14 +33,11 @@ This is a production-ready asynchronous backend template built with FastAPI, fea
 > 🚧 This project is under active development. Feel free to follow, star the repo, or contribute via issues and PRs.
 
 ## Async-FastAPI-MultiDB Project Architecture Overview
-![overview](docs/images/overview.png)
+![architecture](/docs/images/architecture.svg)
 
 This document provides a basic architectural overview of a FastAPI project, aiming to help developers understand the project's organization and the functionality of each module. Through a detailed analysis of the project structure, readers can quickly grasp how to build and maintain an efficient FastAPI application.
 
-### Project Structure
-![architecture-cn](/docs/images/architecture.png)
-
-### Directory Structure Description
+## Directory Structure Description
 ```
 src/
 │
@@ -68,6 +65,9 @@ src/
 │   ├── environment.py    # Environment-related dependencies
 │   ├── role.py           # Role-based permission injection
 │   └── router.py         # Route-level dependencies
+│
+├── middlewares/          # middlewares
+│   ├── logger.py         # http logging
 │
 ├── models/               # Database model definitions
 │   ├── auth.py           # Tables for users, permissions, etc.
@@ -101,6 +101,9 @@ src/
 │   ├── security.py       # Encryption and JWT utilities
 │   ├── uuid7.py          # Custom UUID utilities
 │   └── validate.py       # Field/form validation utilities
+│
+├── websockets/           # WebSocket router and handlers
+│   ├── __init__.py
 │
 ├── initdb.py             # Database initialization script (e.g., table creation, insert default data)
 ├── main.py               # FastAPI application entry point

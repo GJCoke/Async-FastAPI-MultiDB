@@ -34,13 +34,11 @@
 ---
 
 ## Async-FastAPI-MultiDB 项目架构概览
-![overview](docs/images/overview.png)
+![architecture-cn](/docs/images/architecture-cn.svg)
 
 本文档提供了一个 FastAPI 项目的基本架构概览，旨在帮助开发者理解项目的组织结构及各个模块的功能。通过对项目目录的详细解析，读者可以快速掌握如何构建和维护一个高效的 FastAPI 应用。
 
-### 项目结构
-![architecture-cn](/docs/images/architecture-cn.png)
-### 目录结构说明
+## 目录结构说明
 ```
 src/
 │
@@ -68,6 +66,9 @@ src/
 │   ├── environment.py    # 环境相关依赖
 │   ├── role.py           # 角色权限注入
 │   └── router.py         # 路由级依赖
+│
+├── middlewares/          # 中间件
+│   ├── logger.py         # 日志记录
 │
 ├── models/               # 数据库模型定义
 │   ├── auth.py           # 用户、权限等表结构
@@ -101,6 +102,9 @@ src/
 │   ├── security.py       # 加密、JWT 工具
 │   ├── uuid7.py          # 自定义 UUID 工具
 │   └── validate.py       # 字段、表单验证工具
+│
+├── websockets/           # WebSocket 路由和逻辑
+│   ├── __init__.py
 │
 ├── initdb.py             # 数据库初始化脚本（如建表、插入默认数据）
 ├── main.py               # FastAPI 应用主入口
