@@ -46,10 +46,14 @@ async def create_user(session: AsyncSession) -> None:
     await session.commit()
 
 
-async def init_db() -> None:
+async def init_db(session: AsyncSession) -> None:
+    await create_user(session)
+
+
+async def main() -> None:
     async with AsyncSessionLocal() as session:
-        await create_user(session)
+        await init_db(session)
 
 
 if __name__ == "__main__":
-    asyncio.run(init_db())
+    asyncio.run(main())

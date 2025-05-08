@@ -7,7 +7,7 @@ Author : Coke
 Date   : 2025-05-07
 """
 
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 import pytest
 import pytest_asyncio
@@ -19,8 +19,9 @@ from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.pool import StaticPool
 
+MYSQL_URL = "sqlite+aiosqlite://"
 engine = create_async_engine(
-    "sqlite+aiosqlite://",
+    MYSQL_URL,
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
     echo=False,
@@ -71,15 +72,11 @@ async def init(session: AsyncSession) -> None:
     """
     from src.initdb import init_db
 
-    await init_db()
+    await init_db(session)
 
 
 @pytest_asyncio.fixture
-async def client(
-    request: pytest.FixtureRequest,
-    session: AsyncSession,
-    monkeypatch: pytest.MonkeyPatch,
-) -> AsyncIterator[AsyncClient]:
+async def client(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[AsyncClient]:
     """
     Provides an asynchronous HTTP client for making requests to the FastAPI app.
 
@@ -87,24 +84,26 @@ async def client(
     to the FastAPI app. It also mocks database and permission checks for testing purposes.
 
     Args:
-        request (pytest.FixtureRequest): The request object provided by pytest.
-        session (AsyncSession): The database session for use in tests.
         monkeypatch (pytest.MonkeyPatch): The monkeypatch fixture for modifying dependencies.
 
     Yields:
         AsyncClient: The client to send requests to the FastAPI application.
     """
-    from src.core import database
+    from src.core import database, lifecycle
     from src.core.config import settings
     from src.deps.role import verify_user_permission
     from src.main import app
 
-    monkeypatch.setattr(database, "get_async_session", lambda: session)
+    monkeypatch.setattr(database, "ASYNC_DATABASE_URL", MYSQL_URL)
+
+    async def async_none(*_args: Any, **_kwargs: Any) -> None:
+        return None
+
+    monkeypatch.setattr(lifecycle, "store_router_in_db", async_none)
 
     app.dependency_overrides[verify_user_permission] = lambda: None
 
     async with LifespanManager(app) as manager:
-        async with AsyncClient(
-            transport=ASGITransport(app=manager.app), base_url=f"https://{settings.API_PREFIX_V1}"
-        ) as client:
+        transport = ASGITransport(app=manager.app)
+        async with AsyncClient(transport=transport, base_url=f"https://{settings.API_PREFIX_V1}") as client:
             yield client

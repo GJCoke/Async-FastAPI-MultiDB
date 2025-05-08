@@ -352,12 +352,12 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
         Raises:
             ExistsException: If a record with conflicting unique constraints already exists.
-            ValidationError: If validation fails and validate=True.
+            TypeError: If validation fails and validate=True.
         """
         session = session or self.session
         if not validate:
             if not isinstance(create_in, self.model):
-                raise ValueError(f"Expected type {type(self.model)} for 'create_in', but got {type(create_in)}.")
+                raise TypeError(f"Expected type {type(self.model)} for 'create_in', but got {type(create_in)}.")
         else:
             create_in = self.model.model_validate(create_in)
 
