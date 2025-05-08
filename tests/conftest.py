@@ -99,12 +99,12 @@ async def client(
     from src.deps.role import verify_user_permission
     from src.main import app
 
-    monkeypatch.setattr(database, "get_async_session", lambda: async_session)
+    monkeypatch.setattr(database, "get_async_session", lambda: session)
 
     app.dependency_overrides[verify_user_permission] = lambda: None
 
-    transport = ASGITransport(app=app)
-
-    async with LifespanManager(app):
-        async with AsyncClient(transport=transport, base_url=f"https://{settings.API_PREFIX_V1}") as client:
+    async with LifespanManager(app) as manager:
+        async with AsyncClient(
+            transport=ASGITransport(app=manager.app), base_url=f"https://{settings.API_PREFIX_V1}"
+        ) as client:
             yield client

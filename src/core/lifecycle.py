@@ -58,6 +58,9 @@ async def store_router_in_db(routes: list[StarletteRoute | BaseRoute]) -> None:
         routes (list): A list of route objects (either StarletteRoute or BaseRoute).
     """
 
+    if not settings.ENVIRONMENT.is_deployed:
+        return
+
     app_routes: list[FastAPIRouterCreate] = []
 
     for route in routes:
