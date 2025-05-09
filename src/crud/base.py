@@ -16,7 +16,7 @@ from beanie.operators import In
 from motor.motor_asyncio import AsyncIOMotorClientSession
 from pydantic import BaseModel as PydanticBaseModel
 from sqlalchemy import ColumnExpressionArgument
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.sql import ColumnElement
 from sqlmodel import col, delete, func, select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -395,7 +395,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
     async def create_all(
         self,
-        create_in: Sequence[CreateSchema | SQLModel],
+        create_in: Sequence[CreateSchema | SQLModel | dict],
         *,
         session: AsyncSession | None = None,
         auto_commit: bool = False,
@@ -408,7 +408,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         before being added to the session.
 
         Args:
-            create_in (list[CreateSchema | SQLModel]): A list of data used to create the new records.
+            create_in (Sequence[CreateSchema | SQLModel | dict]): A list of data used to create the new records.
                 Each item can be a Pydantic schema or an SQLModel instance, and it will be validated
                 before insertion.
             session (AsyncSession | None): An optional SQLAlchemy `AsyncSession` instance used to
@@ -498,7 +498,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         self, update_in: list[dict[str, Any]], *, session: AsyncSession | None = None, auto_commit: bool = False
     ) -> None:
         """
-        Update a record by its primary key.  TODO: need opt.
+        Update a record by its primary key.
 
         Args:
             update_in (list[dict[str, Any]]): Update data.
@@ -506,18 +506,26 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
 
         Raises:
+            ValueError: If any item is missing an 'id'.
             NotFoundException: If no record exists with the specified ID.
         """
         session = session or self.session
-        for update_info in update_in:
-            _id = update_info.pop("id")
-            if not _id:
-                raise ValueError("Need id for update.")
+        try:
+            for index, update_info in enumerate(update_in):
+                _id = update_info.pop("id", None)
+                if not _id:
+                    raise ValueError(f"[index={index}] Missing 'id' in update payload.")
 
-            statement = update(self.model).filter(col(self.model.id) == _id).values(**update_info)
-            await session.exec(statement)  # type: ignore
+                statement = update(self.model).where(col(self.model.id) == _id).values(**update_info)
+                result = await session.exec(statement)  # type: ignore
+                if result.rowcount == 0:
+                    raise NotFoundException(detail=f"[index={index}] ID '{_id}' not found.")
 
-        await self.commit(auto_commit=auto_commit)
+            await self.commit(auto_commit=auto_commit)
+
+        except SQLAlchemyError as e:
+            await session.rollback()
+            raise RuntimeError("Database error during batch update.") from e
 
     async def delete(self, _id: UUID, /, *, session: AsyncSession | None = None, auto_commit: bool = False) -> SQLModel:
         """

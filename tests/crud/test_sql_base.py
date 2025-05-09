@@ -74,14 +74,16 @@ async def test_create_with_dict(crud: CRUD) -> None:
 
 @pytest.mark.asyncio
 async def test_create_with_schema(crud: CRUD) -> None:
-    case = await crud.create(PyUserCreate(name="case1"))
-    assert case.name == "case1"
+    name = random_lowercase()
+    case = await crud.create(PyUserCreate(name=name))
+    assert case.name == name
 
 
 @pytest.mark.asyncio
 async def test_create_with_model(crud: CRUD) -> None:
-    case = await crud.create(PyUser(name="case2"))
-    assert case.name == "case2"
+    name = random_lowercase()
+    case = await crud.create(PyUser(name=name))
+    assert case.name == name
 
 
 @pytest.mark.asyncio
@@ -96,6 +98,42 @@ async def test_create_invalid_schema_without_validation(crud: CRUD) -> None:
     with pytest.raises(TypeError) as exc:
         await crud.create(PyUserCreate(name="case4"), validate=False)
     assert "Expected type" in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test_create_all_schema(crud: CRUD) -> None:
+    name = random_lowercase()
+    name2 = random_lowercase()
+    await crud.create_all([PyUserCreate(name=name), PyUserCreate(name=name2)])
+
+    created = await crud.get_all(col(PyUser.name).in_([name, name2]))
+    assert len(created) == 2
+    assert created[0].name == name
+    assert created[1].name == name2
+
+
+@pytest.mark.asyncio
+async def test_create_all_dict(crud: CRUD) -> None:
+    name = random_lowercase()
+    name2 = random_lowercase()
+    await crud.create_all([{"name": name}, {"name": name2}])
+
+    created = await crud.get_all(col(PyUser.name).in_([name, name2]))
+    assert len(created) == 2
+    assert created[0].name == name
+    assert created[1].name == name2
+
+
+@pytest.mark.asyncio
+async def test_create_all_model(crud: CRUD) -> None:
+    name = random_lowercase()
+    name2 = random_lowercase()
+    await crud.create_all([PyUser(name=name), PyUser(name=name2)])
+
+    created = await crud.get_all(col(PyUser.name).in_([name, name2]))
+    assert len(created) == 2
+    assert created[0].name == name
+    assert created[1].name == name2
 
 
 @pytest.mark.asyncio
@@ -235,3 +273,108 @@ async def test_get_paginate_with_serializer(crud: CRUD, with_data: list[PyUser])
     page = await crud.get_paginate(serializer=PyUserResponse)
     assert page.total == len(with_data)
     assert isinstance(page.records[0], PyUserResponse)
+
+
+@pytest.mark.asyncio
+async def test_update_with_dict(crud: CRUD, with_data: list[PyUser]) -> None:
+    name = random_lowercase()
+    update = await crud.update(with_data[0], {"name": name})
+    assert update.name == name
+    assert update.id == with_data[0].id
+
+
+@pytest.mark.asyncio
+async def test_update_with_schema(crud: CRUD, with_data: list[PyUser]) -> None:
+    name = random_lowercase()
+    update = await crud.update(with_data[0], PyUserUpdate(name=name))
+    assert update.name == name
+    assert update.id == with_data[0].id
+
+
+@pytest.mark.asyncio
+async def test_update_with_model_instance(crud: CRUD, with_data: list[PyUser]) -> None:
+    name = random_lowercase()
+    update_model = with_data[0]
+    update_model.name = name
+    update = await crud.update(with_data[0], update_model)
+    assert update.name == name
+    assert update.id == with_data[0].id
+
+
+@pytest.mark.asyncio
+async def test_update_invalid_field_raises(crud: CRUD, with_data: list[PyUser]) -> None:
+    with pytest.raises(ValueError):
+        await crud.update(with_data[0], {"name_test": None})
+
+
+@pytest.mark.asyncio
+async def test_update_by_id_with_dict(crud: CRUD, with_data: list[PyUser]) -> None:
+    name = random_lowercase()
+    update = await crud.update_by_id(with_data[0].id, {"name": name})
+    assert update.name == name
+    assert update.id == with_data[0].id
+
+
+@pytest.mark.asyncio
+async def test_update_by_id_with_schema(crud: CRUD, with_data: list[PyUser]) -> None:
+    name = random_lowercase()
+    update = await crud.update_by_id(with_data[0].id, PyUserUpdate(name=name))
+    assert update.name == name
+    assert update.id == with_data[0].id
+
+
+@pytest.mark.asyncio
+async def test_update_by_id_invalid_field_raises(crud: CRUD, with_data: list[PyUser]) -> None:
+    with pytest.raises(ValueError):
+        await crud.update_by_id(with_data[0].id, {"name_test": None})
+
+
+@pytest.mark.asyncio
+async def test_update_all_success(crud: CRUD, with_data: list[PyUser]) -> None:
+    name = random_lowercase()
+    name2 = random_lowercase()
+    await crud.update_all([{"name": name, "id": with_data[0].id}, {"name": name2, "id": with_data[1].id}])
+    update = await crud.get_by_ids([with_data[0].id, with_data[1].id])
+    assert update[0].name == name
+    assert update[1].name == name2
+
+
+@pytest.mark.asyncio
+async def test_update_all_missing_id_raises(crud: CRUD) -> None:
+    with pytest.raises(ValueError):
+        await crud.update_all([{"name": "no_id"}])
+
+
+@pytest.mark.asyncio
+async def test_update_all_not_found_id_raises(crud: CRUD) -> None:
+    with pytest.raises(NotFoundException):
+        await crud.update_all([{"name": "test", "id": random_uuid()}])
+
+
+@pytest.mark.asyncio
+async def test_delete_single_success(crud: CRUD, with_data: list[PyUser]) -> None:
+    deleted = await crud.delete(with_data[0].id)
+    assert deleted.id == with_data[0].id
+    assert deleted.name == with_data[0].name
+    with pytest.raises(NotFoundException):
+        await crud.get(with_data[0].id, nullable=False)
+
+
+@pytest.mark.asyncio
+async def test_delete_single_not_found_raises(crud: CRUD) -> None:
+    with pytest.raises(NotFoundException):
+        await crud.delete(random_uuid())
+
+
+@pytest.mark.asyncio
+async def test_delete_all_success(crud: CRUD, with_data: list[PyUser]) -> None:
+    await crud.delete_all([with_data[0].id, with_data[1].id])
+    remaining = await crud.get_all()
+    assert len(remaining) == 1
+
+
+@pytest.mark.asyncio
+async def test_delete_all_partial_not_found(crud: CRUD, with_data: list[PyUser]) -> None:
+    await crud.delete_all([with_data[0].id, random_uuid()])
+    remaining = await crud.get_all()
+    assert len(remaining) == 2
