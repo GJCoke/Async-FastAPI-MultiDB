@@ -567,6 +567,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         await self.commit(auto_commit=auto_commit)
 
 
+# TODO: need update beanie base crud by sqlmodel crud.
 class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
     """
     Base class for MongoDB CRUD operations using Beanie.

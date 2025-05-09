@@ -33,12 +33,17 @@ class SQLModel(_SQLModel, BaseModel):  # type: ignore
         primary_key=True,
         index=True,
         nullable=False,
+        description="Unique ID",
     )
-    create_time: datetime = Field(default_factory=datetime.now)
-    update_time: datetime = Field(default_factory=datetime.now, sa_column_kwargs={"onupdate": datetime.now})
+    create_time: datetime = Field(default_factory=datetime.now, description="Creation time")
+    update_time: datetime = Field(
+        default_factory=datetime.now,
+        sa_column_kwargs={"onupdate": datetime.now},
+        description="Update time",
+    )
 
 
-# TODO: put.
+# TODO: update base document by sqlmodel and add counter.
 class Document(_Document):
     """
     Base Document class that combines Pydantic and Beanie functionality.

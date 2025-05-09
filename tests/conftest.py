@@ -14,14 +14,25 @@ import pytest_asyncio
 from asgi_lifespan import LifespanManager
 from dotenv import load_dotenv
 from httpx import ASGITransport, AsyncClient
+from pydantic import MongoDsn, RedisDsn
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.pool import StaticPool
 
-MYSQL_URL = "sqlite+aiosqlite://"
+
+class PytestSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env.pytest", env_file_encoding="utf-8", extra="ignore")
+
+    SQL_DATABASE_URL: str = "sqlite+aiosqlite://"
+    MONGO_DATABASE_URL: MongoDsn  # TODO: need add pytest mongo and redis docker.
+    REDIS_DATABASE_URL: RedisDsn
+
+
+pytest_settings = PytestSettings()  # type: ignore
 engine = create_async_engine(
-    MYSQL_URL,
+    pytest_settings.SQL_DATABASE_URL,
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
     echo=False,
@@ -94,7 +105,8 @@ async def client(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[AsyncClient]:
     from src.deps.role import verify_user_permission
     from src.main import app
 
-    monkeypatch.setattr(database, "ASYNC_DATABASE_URL", MYSQL_URL)
+    monkeypatch.setattr(database, "ASYNC_DATABASE_URL", pytest_settings.SQL_DATABASE_URL)
+    # TODO: add monkeypatch mongodb, redis and sync database.
 
     async def async_none(*_args: Any, **_kwargs: Any) -> None:
         return None
@@ -105,5 +117,6 @@ async def client(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[AsyncClient]:
 
     async with LifespanManager(app) as manager:
         transport = ASGITransport(app=manager.app)
+        # TODO: if need v2 client? or others.
         async with AsyncClient(transport=transport, base_url=f"https://{settings.API_PREFIX_V1}") as client:
             yield client

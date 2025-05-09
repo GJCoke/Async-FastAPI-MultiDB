@@ -13,7 +13,7 @@ class InterfaceRouter(SQLModel, table=True):
 
     __tablename__ = "interface_routers"
 
-    name: str
-    description: str
-    path: str
-    methods: list[str] = Field([], sa_column=Column(JSON))
+    name: str = Field(..., unique=True, max_length=100, description="Interface router function name")
+    description: str | None = Field(None, description="Interface router function description")
+    path: str = Field(..., description="Interface router path")
+    methods: list[str] = Field([], sa_column=Column(JSON), description="Interface router methods")
