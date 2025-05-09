@@ -159,7 +159,12 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
     @overload
     async def get_by_ids(
-        self, ids: list[UUID], *, session: AsyncSession | None = None, serializer: type[_PydanticBaseModel]
+        self,
+        ids: list[UUID],
+        *,
+        order_by: ColumnElement[Any] | Any | None = None,
+        session: AsyncSession | None = None,
+        serializer: type[_PydanticBaseModel],
     ) -> list[_PydanticBaseModel]: ...
 
     @overload
@@ -167,6 +172,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         self,
         ids: list[UUID],
         *,
+        order_by: ColumnElement[Any] | Any | None = None,
         session: AsyncSession | None = None,
         serializer: Literal[None] = None,
     ) -> list[SQLModel]: ...
@@ -175,6 +181,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         self,
         ids: list[UUID],
         *,
+        order_by: ColumnElement[Any] | Any | None = None,
         session: AsyncSession | None = None,
         serializer: type[_PydanticBaseModel] | None = None,
     ) -> list[SQLModel] | list[_PydanticBaseModel]:
@@ -183,6 +190,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
         Args:
             ids (list[UUID]): List of primary keys to retrieve.
+            order_by (ColumnElement[Any] | None): Optional column element to order the results.
             session (AsyncSession | None): SQLAlchemy async session.
             serializer (type[_PydanticBaseModel]): Optional Pydantic model class used to
              serialize ORM records into validated output.
@@ -192,6 +200,8 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         """
         session = session or self.session
         statement = select(self.model).filter(col(self.model.id).in_(ids))
+        if order_by is not None:
+            statement = statement.order_by(order_by)
         result = await session.exec(statement)
         response = cast(list[SQLModel], result.all())
 
@@ -203,6 +213,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
     async def get_all(
         self,
         *args: ColumnElement[Any],
+        order_by: ColumnElement[Any] | Any | None = None,
         session: AsyncSession | None = None,
         serializer: type[_PydanticBaseModel],
     ) -> list[_PydanticBaseModel]: ...
@@ -211,6 +222,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
     async def get_all(
         self,
         *args: ColumnElement[Any],
+        order_by: ColumnElement[Any] | Any | None = None,
         session: AsyncSession | None = None,
         serializer: Literal[None] = None,
     ) -> list[SQLModel]: ...
@@ -218,6 +230,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
     async def get_all(
         self,
         *args: ColumnElement[Any],
+        order_by: ColumnElement[Any] | Any | None = None,
         session: AsyncSession | None = None,
         serializer: type[_PydanticBaseModel] | None = None,
     ) -> list[SQLModel] | list[_PydanticBaseModel]:
@@ -226,15 +239,22 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
         Args:
             args (list[ColumnElement[Any]]): Optional list of filters to apply to the query.
+            order_by (ColumnElement[Any] | None): Optional column element to order the results.
             session (AsyncSession): SQLAlchemy async session.
             serializer (type[_PydanticBaseModel]): Optional Pydantic model class used to
              serialize ORM records into validated output.
 
         Returns:
             list[SQLModel]: A list of all records matching the filters.
+
+        Examples:
+            from sqlmodel import col
+            await self.get_all(order_by=col(YourModel.id).desc())
         """
         session = session or self.session
         statement = select(self.model).filter(*args)
+        if order_by is not None:
+            statement = statement.order_by(order_by)
         result = await session.exec(statement)
         response = cast(list[SQLModel], result.all())
 
