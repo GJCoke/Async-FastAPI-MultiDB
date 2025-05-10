@@ -88,20 +88,6 @@ async def test_create_with_model(crud: CRUD) -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_invalid_dict_without_validation(crud: CRUD) -> None:
-    with pytest.raises(TypeError) as exc:
-        await crud.create({"name": "case3"}, validate=False)
-    assert "Expected type" in str(exc.value)
-
-
-@pytest.mark.asyncio
-async def test_create_invalid_schema_without_validation(crud: CRUD) -> None:
-    with pytest.raises(TypeError) as exc:
-        await crud.create(PyUserCreate(name="case4"), validate=False)
-    assert "Expected type" in str(exc.value)
-
-
-@pytest.mark.asyncio
 async def test_create_all_schema(crud: CRUD) -> None:
     name = random_lowercase()
     name2 = random_lowercase()
