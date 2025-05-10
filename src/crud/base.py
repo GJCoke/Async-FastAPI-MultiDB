@@ -15,6 +15,7 @@ from beanie.odm.enums import SortDirection
 from beanie.operators import In
 from motor.motor_asyncio import AsyncIOMotorClientSession
 from pydantic import BaseModel as PydanticBaseModel
+from pymongo import DeleteOne, UpdateOne
 from sqlalchemy import ColumnExpressionArgument
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.sql import ColumnElement
@@ -198,6 +199,9 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         Returns:
             list[SQLModel]: A list of retrieved records, or an empty list if none are found.
         """
+        if not ids:
+            return []
+
         session = session or self.session
         statement = select(self.model).filter(col(self.model.id).in_(ids))
         if order_by is not None:
@@ -395,7 +399,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
     async def create_all(
         self,
-        create_in: Sequence[CreateSchema | SQLModel | dict],
+        creates_in: Sequence[CreateSchema | SQLModel | dict[str, Any]],
         *,
         session: AsyncSession | None = None,
         auto_commit: bool = False,
@@ -408,7 +412,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         before being added to the session.
 
         Args:
-            create_in (Sequence[CreateSchema | SQLModel | dict]): A list of data used to create the new records.
+            creates_in (Sequence[CreateSchema | SQLModel | dict]): A list of data used to create the new records.
                 Each item can be a Pydantic schema or an SQLModel instance, and it will be validated
                 before insertion.
             session (AsyncSession | None): An optional SQLAlchemy `AsyncSession` instance used to
@@ -419,11 +423,14 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             ExistsException: If a record with conflicting unique constraints (e.g., duplicate entries)
                 already exists in the database, the operation will raise an `ExistsException`.
         """
+        if not creates_in:
+            return
+
         session = session or self.session
-        create_in = [self.model.model_validate(create_item) for create_item in create_in]
+        creates_in = [self.model.model_validate(create_item) for create_item in creates_in]
 
         try:
-            session.add_all(create_in)
+            session.add_all(creates_in)
             await session.flush()
 
             await self.commit(auto_commit=auto_commit)
@@ -495,13 +502,17 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         return await self.update(response, update_in, session=session, auto_commit=auto_commit)
 
     async def update_all(
-        self, update_in: list[dict[str, Any]], *, session: AsyncSession | None = None, auto_commit: bool = False
+        self,
+        updates_in: list[dict[str, Any]],
+        *,
+        session: AsyncSession | None = None,
+        auto_commit: bool = False,
     ) -> None:
         """
         Update a record by its primary key.
 
         Args:
-            update_in (list[dict[str, Any]]): Update data.
+            updates_in (list[dict[str, Any]]): Update data.
             session (AsyncSession | None): SQLAlchemy async session.
             auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
 
@@ -509,9 +520,12 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             ValueError: If any item is missing an 'id'.
             NotFoundException: If no record exists with the specified ID.
         """
+        if not updates_in:
+            return
+
         session = session or self.session
         try:
-            for index, update_info in enumerate(update_in):
+            for index, update_info in enumerate(updates_in):
                 _id = update_info.pop("id", None)
                 if not _id:
                     raise ValueError(f"[index={index}] Missing 'id' in update payload.")
@@ -549,7 +563,12 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         return response
 
     async def delete_all(
-        self, ids: list[UUID], /, *, session: AsyncSession | None = None, auto_commit: bool = True
+        self,
+        ids: list[UUID],
+        /,
+        *,
+        session: AsyncSession | None = None,
+        auto_commit: bool = True,
     ) -> None:
         """
         Asynchronously delete multiple records from the database by their primary keys.
@@ -561,13 +580,15 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             session (AsyncSession | None): An optional SQLAlchemy `AsyncSession`
             auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
         """
+        if not ids:
+            return
+
         session = session or self.session
         statement = delete(self.model).filter(col(self.model.id).in_(ids))
         await session.exec(statement)  # type: ignore
         await self.commit(auto_commit=auto_commit)
 
 
-# TODO: need update beanie base crud by sqlmodel crud.
 class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
     """
     Base class for MongoDB CRUD operations using Beanie.
@@ -655,43 +676,104 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
         return response
 
+    @overload
     async def get_by_ids(
         self,
         ids: list[PydanticObjectId],
-        /,
         *,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
         session: AsyncIOMotorClientSession | None = None,
-    ) -> list[Document]:
+        serializer: type[_PydanticBaseModel],
+    ) -> list[_PydanticBaseModel]: ...
+
+    @overload
+    async def get_by_ids(
+        self,
+        ids: list[PydanticObjectId],
+        *,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
+        session: AsyncIOMotorClientSession | None = None,
+        serializer: Literal[None] = None,
+    ) -> list[Document]: ...
+
+    async def get_by_ids(
+        self,
+        ids: list[PydanticObjectId],
+        *,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
+        session: AsyncIOMotorClientSession | None = None,
+        serializer: type[_PydanticBaseModel] | None = None,
+    ) -> list[Document] | list[_PydanticBaseModel]:
         """
         Retrieves multiple documents by a list of IDs.
 
         Args:
             ids (list[Any]): List of document IDs.
+            order_by (str | tuple[str, int] | list[tuple[str, int]] | None): Sorting order. Defaults to None.
             session (AsyncIOMotorClientSession | None): Motor client async session.
+            serializer (type[_PydanticBaseModel]): Optional Pydantic model class used to
+             serialize ORM records into validated output.
 
         Returns:
             list[Document]: A list of retrieved documents.
         """
-        response = await self.model.find(In(self.model.id, ids), session=session).to_list()
+        if not ids:
+            return []
+
+        statement = self.model.find(In(self.model.id, ids), session=session)
+        if order_by is not None:
+            statement = statement.sort(*([order_by] if not isinstance(order_by, list) else order_by))
+
+        response = await statement.to_list()
+        if serializer is not None:
+            return [serializer.model_validate(item) for item in response]
         return response
+
+    @overload
+    async def get_all(
+        self,
+        *args: dict[str, Any] | bool,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
+        session: AsyncIOMotorClientSession | None = None,
+        serializer: type[_PydanticBaseModel],
+    ) -> list[_PydanticBaseModel]: ...
+
+    @overload
+    async def get_all(
+        self,
+        *args: dict[str, Any] | bool,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
+        session: AsyncIOMotorClientSession | None = None,
+        serializer: Literal[None] = None,
+    ) -> list[Document]: ...
 
     async def get_all(
         self,
         *args: dict[str, Any] | bool,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
         session: AsyncIOMotorClientSession | None = None,
-    ) -> list[Document]:
+        serializer: type[_PydanticBaseModel] | None = None,
+    ) -> list[Document] | list[_PydanticBaseModel]:
         """
         Retrieves all documents matching the given filters.
 
         Args:
             *args (dict[str, Any] | bool): Query filters.
+            order_by (str | tuple[str, int] | list[tuple[str, int]] | None): Sorting order. Defaults to None.
             session (AsyncIOMotorClientSession | None): Motor client async session.
+            serializer (type[_PydanticBaseModel]): Optional Pydantic model class used to
+             serialize ORM records into validated output.
 
         Returns:
             list[Document]: A list of matching documents.
         """
+        statement = self.model.find(*args, session=session)
+        if order_by is not None:
+            statement = statement.sort(*([order_by] if not isinstance(order_by, list) else order_by))
 
-        response = await self.model.find(*args, session=session).to_list()
+        response = await statement.to_list()
+        if serializer is not None:
+            return [serializer.model_validate(item) for item in response]
         return response
 
     async def get_count(
@@ -713,6 +795,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         response = await self.model.find(*args, session=session).count()
         return response
 
+    @overload
     async def get_paginate(
         self,
         *args: dict[str, Any] | bool,
@@ -720,7 +803,29 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         size: int = 20,
         order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
         session: AsyncIOMotorClientSession | None = None,
-    ) -> PaginatedResponse[Document]:
+        serializer: type[_PydanticBaseModel],
+    ) -> PaginatedResponse[_PydanticBaseModel]: ...
+
+    @overload
+    async def get_paginate(
+        self,
+        *args: dict[str, Any] | bool,
+        page: int = 1,
+        size: int = 20,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
+        session: AsyncIOMotorClientSession | None = None,
+        serializer: Literal[None] = None,
+    ) -> PaginatedResponse[Document]: ...
+
+    async def get_paginate(
+        self,
+        *args: dict[str, Any] | bool,
+        page: int = 1,
+        size: int = 20,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
+        session: AsyncIOMotorClientSession | None = None,
+        serializer: type[_PydanticBaseModel] | None = None,
+    ) -> PaginatedResponse[Document] | PaginatedResponse[_PydanticBaseModel]:
         """
         Retrieves paginated results for documents matching the given filters.
 
@@ -730,18 +835,27 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
             size (int): Page size. Defaults to 20.
             order_by (str | tuple[str, int] | list[tuple[str, int]] | None): Sorting order. Defaults to None.
             session (AsyncIOMotorClientSession | None): Motor client async session.
+            serializer (type[_PydanticBaseModel]): Optional Pydantic model class used to
+             serialize ORM records into validated output.
 
         Returns:
             dict: Paginated response containing records, total count, page, and page size.
         """
 
-        result = self.model.find(*args, session=session).skip((page - 1) * size).limit(size)
-
+        statement = self.model.find(*args, session=session).skip((page - 1) * size).limit(size)
         if order_by is not None:
-            result.sort(*order_by)
+            statement = statement.sort(*([order_by] if not isinstance(order_by, list) else order_by))
 
-        response = await result.to_list()
+        response = await statement.to_list()
         total = await self.get_count(*args, session=session)
+
+        if serializer is not None:
+            return PaginatedResponse(
+                records=[serializer.model_validate(item) for item in response],
+                total=total,
+                page=page,
+                page_size=size,
+            )
 
         return PaginatedResponse(records=response, total=total, page=page, page_size=size)
 
@@ -765,6 +879,29 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         await response.create(session=session)
 
         return response
+
+    async def create_all(
+        self,
+        creates_in: Sequence[CreateSchema | Document | dict[str, Any]],
+        *,
+        session: AsyncIOMotorClientSession | None = None,
+    ) -> None:
+        """
+        Create multiple documents in the database in a single batch operation.
+
+        Args:
+            creates_in (Sequence[CreateSchema | Document | dict[str, Any]]):
+                A sequence of items to be inserted. Each item can be a Pydantic schema,
+                a Document instance, or a raw dictionary.
+
+            session (AsyncIOMotorClientSession | None):
+                Optional MongoDB session for transactional support. Defaults to None.
+        """
+        if not creates_in:
+            return
+
+        update_models = [self.model.model_validate(create_item) for create_item in creates_in]
+        await self.model.insert_many(update_models, session=session)
 
     @staticmethod
     async def update(
@@ -799,8 +936,8 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         self,
         _id: PydanticObjectId,
         /,
-        *,
         update_in: UpdateSchema | dict[str, Any],
+        *,
         session: AsyncIOMotorClientSession | None = None,
     ) -> Document:
         """
@@ -817,6 +954,42 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
         update_model = await self.get(_id, nullable=False)
         return await self.update(update_model, update_in, session=session)
+
+    async def update_all(
+        self,
+        updates_in: list[dict[str, Any]],
+        *,
+        session: AsyncIOMotorClientSession | None = None,
+    ) -> None:
+        """
+        Perform bulk update operations on documents using MongoDB's bulk_write.
+
+        Each item in `updates_in` must contain an "_id" key, which is used to match
+        the document, and the rest of the keys will be used as fields to update.
+
+        Args:
+            updates_in (list[dict[str, Any]]): A list of dictionaries where each dictionary
+                represents a document update. Must contain "_id" and update fields.
+            session (AsyncIOMotorClientSession | None, optional): Optional MongoDB session
+                for transactional support.
+
+        Raises:
+            ValueError: If any update dictionary does not contain the required "_id" key.
+        """
+
+        if not updates_in:
+            return
+
+        statements = []
+        for index, update_info in enumerate(updates_in):
+            _id = update_info.pop("_id", None)
+            if not _id:
+                raise ValueError(f"[index={index}] Missing 'id' in update payload.")
+
+            statements.append(UpdateOne({"id": _id}, {"$set": update_info}))
+
+        collection = self.model.get_motor_collection()
+        await collection.bulk_write(statements, session=session)
 
     async def delete(
         self,
@@ -839,3 +1012,24 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         update_model = await self.get(_id, nullable=False, session=session)
         await update_model.delete(session=session)  # type: ignore
         return update_model
+
+    async def delete_all(
+        self,
+        ids: list[PydanticObjectId],
+        /,
+        *,
+        session: AsyncIOMotorClientSession | None = None,
+    ) -> None:
+        """
+        Bulk delete documents by their id.
+
+        Args:
+            ids (Sequence[PydanticObjectId]): List of document ObjectIDs to delete.
+            session (AsyncIOMotorClientSession, optional): MongoDB transaction session.
+        """
+        if not ids:
+            return
+
+        statements = [DeleteOne({"_id": _id}) for _id in ids]
+        collection = self.model.get_motor_collection()
+        await collection.bulk_write(statements, session=session)

@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 ASYNC_DATABASE_URL = str(settings.ASYNC_DATABASE_POSTGRESQL_URL)
 SYNC_DATABASE_URL = str(settings.SYNC_DATABASE_POSTGRESQL_URL)
 REDIS_URL = str(settings.REDIS_URL)
+MONGO_DATABASE_URL = str(settings.DATABASE_MONGO_URL)
 
 # Create an 'async and sync' SQLAlchemy engine for PostgreSQL connection.
 # The 'echo' parameter is set based on the environment debug flag,
@@ -454,7 +455,7 @@ class MongoManager(BaseManager):
         Raises:
             RuntimeError: If the connection fails.
         """
-        cls._client = AsyncIOMotorClient(str(settings.DATABASE_MONGO_URL))
+        cls._client = AsyncIOMotorClient(MONGO_DATABASE_URL)
         await init_beanie(
             database=cls._client["beanie_db"],
             document_models=get_document_models(),

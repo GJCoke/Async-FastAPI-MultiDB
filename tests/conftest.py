@@ -26,7 +26,7 @@ class PytestSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env.pytest", env_file_encoding="utf-8", extra="ignore")
 
     SQL_DATABASE_URL: str = "sqlite+aiosqlite://"
-    MONGO_DATABASE_URL: MongoDsn  # TODO: need add pytest mongo and redis docker.
+    MONGO_DATABASE_URL: MongoDsn
     REDIS_DATABASE_URL: RedisDsn
 
 
@@ -106,14 +106,15 @@ async def client(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[AsyncClient]:
     from src.main import app
 
     monkeypatch.setattr(database, "ASYNC_DATABASE_URL", pytest_settings.SQL_DATABASE_URL)
-    # TODO: add monkeypatch mongodb, redis and sync database.
+    monkeypatch.setattr(database, "REDIS_URL", str(pytest_settings.REDIS_DATABASE_URL))
+    monkeypatch.setattr(database, "MONGO_DATABASE_URL", str(pytest_settings.MONGO_DATABASE_URL))
 
     async def async_none(*_args: Any, **_kwargs: Any) -> None:
         return None
 
     monkeypatch.setattr(lifecycle, "store_router_in_db", async_none)
 
-    app.dependency_overrides[verify_user_permission] = lambda: None
+    app.dependency_overrides[verify_user_permission] = lambda: None  # type: ignore
 
     async with LifespanManager(app) as manager:
         transport = ASGITransport(app=manager.app)
