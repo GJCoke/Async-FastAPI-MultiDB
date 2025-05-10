@@ -14,11 +14,10 @@ from pydantic import Field as PydanticField
 from sqlmodel import Field
 from sqlmodel import SQLModel as _SQLModel
 
-from src.schemas.base import BaseModel
 from src.utils.uuid7 import uuid7
 
 
-class SQLModel(_SQLModel, BaseModel):  # type: ignore
+class SQLModel(_SQLModel):
     """
     Base SQLModel class that combines Pydantic and SQLAlchemy functionality.
 

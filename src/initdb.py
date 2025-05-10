@@ -39,7 +39,7 @@ async def create_user(session: AsyncSession) -> None:
         session.add(Role.model_validate(role))
 
     for user in users:
-        user_dict = user.serializable_dict()
+        user_dict = user.model_dump()
         user_dict["password"] = hash_password(user.password)
         session.add(User.model_validate(user_dict))
 

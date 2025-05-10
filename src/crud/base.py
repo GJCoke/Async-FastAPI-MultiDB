@@ -7,7 +7,7 @@ Author : Coke
 Date   : 2025-03-18
 """
 
-from typing import Any, Generic, Literal, Sequence, TypeVar, cast, overload
+from typing import Any, Generic, Literal, Mapping, Sequence, TypeVar, cast, overload
 from uuid import UUID
 
 from beanie import PydanticObjectId
@@ -357,7 +357,6 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         self,
         create_in: CreateSchema | SQLModel | dict[str, Any],
         *,
-        validate: bool = True,
         session: AsyncSession | None = None,
         auto_commit: bool = False,
     ) -> SQLModel:
@@ -367,7 +366,6 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         Args:
             create_in (UpdateSchemaType | SQLModel | dict[str, Any]): Data to create the new record.
                 Can be a Pydantic schema, SQLModel instance, or raw dictionary.
-            validate (bool): Whether to validate input data before creation. Defaults to True.
             session (AsyncSession | None): SQLAlchemy async session for database operations.
             auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
 
@@ -379,23 +377,19 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             TypeError: If validation fails and validate=True.
         """
         session = session or self.session
-        if not validate:
-            if not isinstance(create_in, self.model):
-                raise TypeError(f"Expected type {type(self.model)} for 'create_in', but got {type(create_in)}.")
-        else:
-            create_in = self.model.model_validate(create_in)
+        created = self.model.model_validate(create_in)
 
         try:
-            session.add(create_in)
+            session.add(created)
             await session.flush()
 
             await self.commit(auto_commit=auto_commit)
-            await session.refresh(create_in)
+            await session.refresh(created)
         except IntegrityError:
             await session.rollback()
             raise ExistsException()
 
-        return create_in
+        return created
 
     async def create_all(
         self,
@@ -465,12 +459,12 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         """
         session = session or self.session
         if not isinstance(update_in, dict):
-            update_in = update_in.serializable_dict(exclude_unset=True, by_alias=False)
+            update_in = update_in.model_dump(exclude_unset=True)
 
         for field, value in update_in.items():
             setattr(current_model, field, value)
 
-        response = await self.create(current_model, validate=False, session=session, auto_commit=auto_commit)
+        response = await self.create(current_model, session=session, auto_commit=auto_commit)
         return response
 
     async def update_by_id(
@@ -587,6 +581,24 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         statement = delete(self.model).filter(col(self.model.id).in_(ids))
         await session.exec(statement)  # type: ignore
         await self.commit(auto_commit=auto_commit)
+
+
+def normalize_order(order_by: str | tuple[str, SortDirection]) -> tuple[str, SortDirection]:
+    """
+    Normalize the ordering field, converting 'id' to '_id', and ensuring
+    a consistent (field, direction) tuple format.
+
+    Args:
+        order_by (str | tuple[str, SortDirection]): The ordering input, either a string
+            representing the field name, or a tuple of (field, direction).
+
+    Returns:
+        tuple[str, SortDirection]: A normalized tuple representing the sort field and direction.
+    """
+    field, direction = (order_by, SortDirection.ASCENDING) if isinstance(order_by, str) else order_by
+    if field == "id":
+        field = "_id"
+    return field, direction
 
 
 class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
@@ -722,7 +734,9 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
         statement = self.model.find(In(self.model.id, ids), session=session)
         if order_by is not None:
-            statement = statement.sort(*([order_by] if not isinstance(order_by, list) else order_by))
+            order_by_list = [order_by] if isinstance(order_by, (str, tuple)) else order_by
+            sort_list = [normalize_order(item) for item in order_by_list]
+            statement = statement.sort(*sort_list)
 
         response = await statement.to_list()
         if serializer is not None:
@@ -732,7 +746,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
     @overload
     async def get_all(
         self,
-        *args: dict[str, Any] | bool,
+        *args: Mapping[str, Any] | bool,
         order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
         session: AsyncIOMotorClientSession | None = None,
         serializer: type[_PydanticBaseModel],
@@ -741,7 +755,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
     @overload
     async def get_all(
         self,
-        *args: dict[str, Any] | bool,
+        *args: Mapping[str, Any] | bool,
         order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
         session: AsyncIOMotorClientSession | None = None,
         serializer: Literal[None] = None,
@@ -749,7 +763,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
     async def get_all(
         self,
-        *args: dict[str, Any] | bool,
+        *args: Mapping[str, Any] | bool,
         order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
         session: AsyncIOMotorClientSession | None = None,
         serializer: type[_PydanticBaseModel] | None = None,
@@ -769,7 +783,9 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         """
         statement = self.model.find(*args, session=session)
         if order_by is not None:
-            statement = statement.sort(*([order_by] if not isinstance(order_by, list) else order_by))
+            order_by_list = [order_by] if isinstance(order_by, (str, tuple)) else order_by
+            sort_list = [normalize_order(item) for item in order_by_list]
+            statement = statement.sort(*sort_list)
 
         response = await statement.to_list()
         if serializer is not None:
@@ -844,7 +860,9 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
         statement = self.model.find(*args, session=session).skip((page - 1) * size).limit(size)
         if order_by is not None:
-            statement = statement.sort(*([order_by] if not isinstance(order_by, list) else order_by))
+            order_by_list = [order_by] if isinstance(order_by, (str, tuple)) else order_by
+            sort_list = [normalize_order(item) for item in order_by_list]
+            statement = statement.sort(*sort_list)
 
         response = await statement.to_list()
         total = await self.get_count(*args, session=session)
@@ -875,9 +893,10 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         Returns:
             Document: The created document.
         """
-        response = self.model.model_validate(create_in)
-        await response.create(session=session)
-
+        if not isinstance(create_in, dict):
+            create_in = create_in.model_dump()
+        create = self.model.model_validate(create_in)
+        response = await create.create(session=session)
         return response
 
     async def create_all(
@@ -900,13 +919,15 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         if not creates_in:
             return
 
-        update_models = [self.model.model_validate(create_item) for create_item in creates_in]
+        update_models = [
+            self.model.model_validate(item if isinstance(item, dict) else item.model_dump()) for item in creates_in
+        ]
         await self.model.insert_many(update_models, session=session)
 
     @staticmethod
     async def update(
         current_model: Document,
-        update_in: UpdateSchema | dict[str, Any],
+        update_in: UpdateSchema | Document | dict[str, Any],
         *,
         session: AsyncIOMotorClientSession | None = None,
     ) -> Document:
@@ -915,7 +936,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
         Args:
             current_model (Document): The document to be updated.
-            update_in (UpdateSchema | dict[str, Any]): The update data.
+            update_in (UpdateSchema | Document | dict[str, Any]): The update data.
             session (AsyncIOMotorClientSession | None): Motor client async session.
 
         Returns:
@@ -923,13 +944,11 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         """
 
         if not isinstance(update_in, dict):
-            update_in = update_in.serializable_dict(exclude_unset=True)
+            update_in = update_in.model_dump(exclude_unset=True)
 
         for field, value in update_in.items():
             setattr(current_model, field, value)
-
-        await current_model.replace(session=session)  # type: ignore
-
+        current_model = await current_model.replace(session=session)  # type: ignore
         return current_model
 
     async def update_by_id(
@@ -982,11 +1001,11 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
         statements = []
         for index, update_info in enumerate(updates_in):
-            _id = update_info.pop("_id", None)
+            _id = update_info.pop("id", None) or update_info.pop("_id", None)
             if not _id:
                 raise ValueError(f"[index={index}] Missing 'id' in update payload.")
 
-            statements.append(UpdateOne({"id": _id}, {"$set": update_info}))
+            statements.append(UpdateOne({"_id": _id}, {"$set": update_info}))
 
         collection = self.model.get_motor_collection()
         await collection.bulk_write(statements, session=session)
@@ -1009,9 +1028,9 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
             Document: The deleted document.
         """
 
-        update_model = await self.get(_id, nullable=False, session=session)
-        await update_model.delete(session=session)  # type: ignore
-        return update_model
+        delete_model = await self.get(_id, nullable=False, session=session)
+        await delete_model.delete(session=session)  # type: ignore
+        return delete_model
 
     async def delete_all(
         self,

@@ -4,8 +4,6 @@ services:
 #    restart: always
 #    hostname: pytest_postgresql
 #    image: bitnami/postgresql
-#    env_file:
-#      - .env
 #    volumes:
 #      - pytest_postgresql_data:/var/lib/postgresql
 #
@@ -18,9 +16,6 @@ services:
     hostname: pytest_mongo
     image: mongo:latest
 
-    volumes:
-      - pytest_mongo_data:/var/lib/mongo
-
     ports:
       - "17018:27017"
 
@@ -30,24 +25,11 @@ services:
     hostname: pytest_redis
     container_name: pytest_redis
 
-    volumes:
-      - pytest_redis_data:/var/lib/redis
-
     command:
       - 'redis-server'  # start redis server.
 
     ports:
       - "16379:6379"  # Map the host's port 36379 to the container's port 6379.
-
-volumes:  # data persistence.
-  pytest_postgresql_data:
-    driver: "local"
-
-  pytest_mongo_data:
-    driver: "local"
-
-  pytest_redis_data:
-    driver: "local"
 
 networks:
   default:

@@ -68,8 +68,9 @@ async def with_data(session: AsyncSession) -> list[PyUser]:
 
 @pytest.mark.asyncio
 async def test_create_with_dict(crud: CRUD) -> None:
-    case = await crud.create({"name": "case"})
-    assert case.name == "case"
+    name = random_lowercase()
+    case = await crud.create({"name": name})
+    assert case.name == name
 
 
 @pytest.mark.asyncio
@@ -201,7 +202,7 @@ async def test_get_by_invalid_id_with_nullable_false_raises(crud: CRUD) -> None:
 
 @pytest.mark.asyncio
 async def test_get_by_id_success(crud: CRUD, with_data: list[PyUser]) -> None:
-    result = await crud.get(with_data[0].id)
+    result = await crud.get(with_data[0].id, nullable=False)
     assert result == with_data[0]
 
 

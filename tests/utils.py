@@ -8,6 +8,9 @@ import string
 import uuid
 from datetime import datetime, timedelta
 
+from beanie import PydanticObjectId
+from bson import ObjectId
+
 
 def random_string(
     length: int = 10,
@@ -86,6 +89,11 @@ def random_password(length: int = 12) -> str:
 def random_uuid() -> uuid.UUID:
     """Generate a random UUID string."""
     return uuid.uuid4()
+
+
+def random_object_id() -> PydanticObjectId:
+    """Generate a random object ID."""
+    return PydanticObjectId(ObjectId())
 
 
 def random_text(min_words: int = 5, max_words: int = 15) -> str:
