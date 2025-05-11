@@ -23,4 +23,4 @@ LOG_LEVEL=${LOG_LEVEL:-info}
 LOG_CONFIG=${LOG_CONFIG:-logging.ini}
 
 # Start the server.
-exec uvicorn --reload --proxy-headers --host $HOST --port $PORT --log-config $LOG_CONFIG "$APP_MODULE"
+exec uvicorn --reload --proxy-headers --host "$HOST" --port "$PORT" --log-config "$LOG_CONFIG" "$APP_MODULE"
