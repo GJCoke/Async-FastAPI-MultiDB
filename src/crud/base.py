@@ -7,7 +7,7 @@ Author : Coke
 Date   : 2025-03-18
 """
 
-from typing import Any, Generic, Literal, Sequence, TypeVar, cast, overload
+from typing import Any, Generic, Literal, Mapping, Sequence, TypeVar, cast, overload
 from uuid import UUID
 
 from beanie import PydanticObjectId
@@ -15,8 +15,9 @@ from beanie.odm.enums import SortDirection
 from beanie.operators import In
 from motor.motor_asyncio import AsyncIOMotorClientSession
 from pydantic import BaseModel as PydanticBaseModel
+from pymongo import DeleteOne, UpdateOne
 from sqlalchemy import ColumnExpressionArgument
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.sql import ColumnElement
 from sqlmodel import col, delete, func, select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -159,7 +160,12 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
     @overload
     async def get_by_ids(
-        self, ids: list[UUID], *, session: AsyncSession | None = None, serializer: type[_PydanticBaseModel]
+        self,
+        ids: list[UUID],
+        *,
+        order_by: ColumnElement[Any] | Any | None = None,
+        session: AsyncSession | None = None,
+        serializer: type[_PydanticBaseModel],
     ) -> list[_PydanticBaseModel]: ...
 
     @overload
@@ -167,6 +173,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         self,
         ids: list[UUID],
         *,
+        order_by: ColumnElement[Any] | Any | None = None,
         session: AsyncSession | None = None,
         serializer: Literal[None] = None,
     ) -> list[SQLModel]: ...
@@ -175,6 +182,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         self,
         ids: list[UUID],
         *,
+        order_by: ColumnElement[Any] | Any | None = None,
         session: AsyncSession | None = None,
         serializer: type[_PydanticBaseModel] | None = None,
     ) -> list[SQLModel] | list[_PydanticBaseModel]:
@@ -183,6 +191,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
         Args:
             ids (list[UUID]): List of primary keys to retrieve.
+            order_by (ColumnElement[Any] | None): Optional column element to order the results.
             session (AsyncSession | None): SQLAlchemy async session.
             serializer (type[_PydanticBaseModel]): Optional Pydantic model class used to
              serialize ORM records into validated output.
@@ -190,8 +199,13 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         Returns:
             list[SQLModel]: A list of retrieved records, or an empty list if none are found.
         """
+        if not ids:
+            return []
+
         session = session or self.session
         statement = select(self.model).filter(col(self.model.id).in_(ids))
+        if order_by is not None:
+            statement = statement.order_by(order_by)
         result = await session.exec(statement)
         response = cast(list[SQLModel], result.all())
 
@@ -203,6 +217,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
     async def get_all(
         self,
         *args: ColumnElement[Any],
+        order_by: ColumnElement[Any] | Any | None = None,
         session: AsyncSession | None = None,
         serializer: type[_PydanticBaseModel],
     ) -> list[_PydanticBaseModel]: ...
@@ -211,6 +226,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
     async def get_all(
         self,
         *args: ColumnElement[Any],
+        order_by: ColumnElement[Any] | Any | None = None,
         session: AsyncSession | None = None,
         serializer: Literal[None] = None,
     ) -> list[SQLModel]: ...
@@ -218,6 +234,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
     async def get_all(
         self,
         *args: ColumnElement[Any],
+        order_by: ColumnElement[Any] | Any | None = None,
         session: AsyncSession | None = None,
         serializer: type[_PydanticBaseModel] | None = None,
     ) -> list[SQLModel] | list[_PydanticBaseModel]:
@@ -226,15 +243,22 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
         Args:
             args (list[ColumnElement[Any]]): Optional list of filters to apply to the query.
+            order_by (ColumnElement[Any] | None): Optional column element to order the results.
             session (AsyncSession): SQLAlchemy async session.
             serializer (type[_PydanticBaseModel]): Optional Pydantic model class used to
              serialize ORM records into validated output.
 
         Returns:
             list[SQLModel]: A list of all records matching the filters.
+
+        Examples:
+            from sqlmodel import col
+            await self.get_all(order_by=col(YourModel.id).desc())
         """
         session = session or self.session
         statement = select(self.model).filter(*args)
+        if order_by is not None:
+            statement = statement.order_by(order_by)
         result = await session.exec(statement)
         response = cast(list[SQLModel], result.all())
 
@@ -352,12 +376,12 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
         Raises:
             ExistsException: If a record with conflicting unique constraints already exists.
-            ValidationError: If validation fails and validate=True.
+            TypeError: If validation fails and validate=True.
         """
         session = session or self.session
         if not validate:
             if not isinstance(create_in, self.model):
-                raise ValueError(f"Expected type {type(self.model)} for 'create_in', but got {type(create_in)}.")
+                raise TypeError(f"Expected type {type(self.model)} for 'create_in', but got {type(create_in)}.")
         else:
             create_in = self.model.model_validate(create_in)
 
@@ -371,11 +395,11 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             await session.rollback()
             raise ExistsException()
 
-        return create_in
+        return create_in  # type: ignore
 
     async def create_all(
         self,
-        create_in: Sequence[CreateSchema | SQLModel],
+        creates_in: Sequence[CreateSchema | SQLModel | dict[str, Any]],
         *,
         session: AsyncSession | None = None,
         auto_commit: bool = False,
@@ -388,7 +412,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         before being added to the session.
 
         Args:
-            create_in (list[CreateSchema | SQLModel]): A list of data used to create the new records.
+            creates_in (Sequence[CreateSchema | SQLModel | dict]): A list of data used to create the new records.
                 Each item can be a Pydantic schema or an SQLModel instance, and it will be validated
                 before insertion.
             session (AsyncSession | None): An optional SQLAlchemy `AsyncSession` instance used to
@@ -399,11 +423,14 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             ExistsException: If a record with conflicting unique constraints (e.g., duplicate entries)
                 already exists in the database, the operation will raise an `ExistsException`.
         """
+        if not creates_in:
+            return
+
         session = session or self.session
-        create_in = [self.model.model_validate(create_item) for create_item in create_in]
+        creates_in = [self.model.model_validate(create_item) for create_item in creates_in]
 
         try:
-            session.add_all(create_in)
+            session.add_all(creates_in)
             await session.flush()
 
             await self.commit(auto_commit=auto_commit)
@@ -438,7 +465,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         """
         session = session or self.session
         if not isinstance(update_in, dict):
-            update_in = update_in.serializable_dict(exclude_unset=True, by_alias=False)
+            update_in = update_in.model_dump(exclude_unset=True)
 
         for field, value in update_in.items():
             setattr(current_model, field, value)
@@ -475,29 +502,44 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         return await self.update(response, update_in, session=session, auto_commit=auto_commit)
 
     async def update_all(
-        self, update_in: list[dict[str, Any]], *, session: AsyncSession | None = None, auto_commit: bool = False
+        self,
+        updates_in: list[dict[str, Any]],
+        *,
+        session: AsyncSession | None = None,
+        auto_commit: bool = False,
     ) -> None:
         """
-        Update a record by its primary key.  TODO: need opt.
+        Update a record by its primary key.
 
         Args:
-            update_in (list[dict[str, Any]]): Update data.
+            updates_in (list[dict[str, Any]]): Update data.
             session (AsyncSession | None): SQLAlchemy async session.
             auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
 
         Raises:
+            ValueError: If any item is missing an 'id'.
             NotFoundException: If no record exists with the specified ID.
         """
+        if not updates_in:
+            return
+
         session = session or self.session
-        for update_info in update_in:
-            _id = update_info.pop("id")
-            if not _id:
-                raise ValueError("Need id for update.")
+        try:
+            for index, update_info in enumerate(updates_in):
+                _id = update_info.pop("id", None)
+                if not _id:
+                    raise ValueError(f"[index={index}] Missing 'id' in update payload.")
 
-            statement = update(self.model).filter(col(self.model.id) == _id).values(**update_info)
-            await session.exec(statement)  # type: ignore
+                statement = update(self.model).where(col(self.model.id) == _id).values(**update_info)
+                result = await session.exec(statement)  # type: ignore
+                if result.rowcount == 0:
+                    raise NotFoundException(detail=f"[index={index}] ID '{_id}' not found.")
 
-        await self.commit(auto_commit=auto_commit)
+            await self.commit(auto_commit=auto_commit)
+
+        except SQLAlchemyError as e:
+            await session.rollback()
+            raise RuntimeError("Database error during batch update.") from e
 
     async def delete(self, _id: UUID, /, *, session: AsyncSession | None = None, auto_commit: bool = False) -> SQLModel:
         """
@@ -521,7 +563,12 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         return response
 
     async def delete_all(
-        self, ids: list[UUID], /, *, session: AsyncSession | None = None, auto_commit: bool = True
+        self,
+        ids: list[UUID],
+        /,
+        *,
+        session: AsyncSession | None = None,
+        auto_commit: bool = True,
     ) -> None:
         """
         Asynchronously delete multiple records from the database by their primary keys.
@@ -533,10 +580,31 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             session (AsyncSession | None): An optional SQLAlchemy `AsyncSession`
             auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
         """
+        if not ids:
+            return
+
         session = session or self.session
         statement = delete(self.model).filter(col(self.model.id).in_(ids))
         await session.exec(statement)  # type: ignore
         await self.commit(auto_commit=auto_commit)
+
+
+def normalize_order(order_by: str | tuple[str, SortDirection]) -> tuple[str, SortDirection]:
+    """
+    Normalize the ordering field, converting 'id' to '_id', and ensuring
+    a consistent (field, direction) tuple format.
+
+    Args:
+        order_by (str | tuple[str, SortDirection]): The ordering input, either a string
+            representing the field name, or a tuple of (field, direction).
+
+    Returns:
+        tuple[str, SortDirection]: A normalized tuple representing the sort field and direction.
+    """
+    field, direction = (order_by, SortDirection.ASCENDING) if isinstance(order_by, str) else order_by
+    if field == "id":
+        field = "_id"
+    return field, direction
 
 
 class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
@@ -570,7 +638,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
     @overload
     async def get(
         self,
-        _id: PydanticObjectId,
+        _id: PydanticObjectId | None,
         /,
         *,
         nullable: Literal[False],
@@ -580,7 +648,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
     @overload
     async def get(
         self,
-        _id: PydanticObjectId,
+        _id: PydanticObjectId | None,
         /,
         *,
         nullable: Literal[True],
@@ -590,7 +658,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
     @overload
     async def get(
         self,
-        _id: PydanticObjectId,
+        _id: PydanticObjectId | None,
         /,
         *,
         session: AsyncIOMotorClientSession | None = None,
@@ -598,7 +666,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
     async def get(
         self,
-        _id: PydanticObjectId,
+        _id: PydanticObjectId | None,
         /,
         *,
         nullable: bool = True,
@@ -619,6 +687,9 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
             NotFoundException: If the document is not found and nullable is False.
         """
 
+        if _id is None:
+            raise ValueError("requires a valid document identifier.")
+
         response = await self.model.get(document_id=_id, session=session)
 
         if not nullable and not response:
@@ -626,43 +697,108 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
         return response
 
+    @overload
     async def get_by_ids(
         self,
-        ids: list[PydanticObjectId],
-        /,
+        ids: list[PydanticObjectId | None],
         *,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
         session: AsyncIOMotorClientSession | None = None,
-    ) -> list[Document]:
+        serializer: type[_PydanticBaseModel],
+    ) -> list[_PydanticBaseModel]: ...
+
+    @overload
+    async def get_by_ids(
+        self,
+        ids: list[PydanticObjectId | None],
+        *,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
+        session: AsyncIOMotorClientSession | None = None,
+        serializer: Literal[None] = None,
+    ) -> list[Document]: ...
+
+    async def get_by_ids(
+        self,
+        ids: list[PydanticObjectId | None],
+        *,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
+        session: AsyncIOMotorClientSession | None = None,
+        serializer: type[_PydanticBaseModel] | None = None,
+    ) -> list[Document] | list[_PydanticBaseModel]:
         """
         Retrieves multiple documents by a list of IDs.
 
         Args:
             ids (list[Any]): List of document IDs.
+            order_by (str | tuple[str, int] | list[tuple[str, int]] | None): Sorting order. Defaults to None.
             session (AsyncIOMotorClientSession | None): Motor client async session.
+            serializer (type[_PydanticBaseModel]): Optional Pydantic model class used to
+             serialize ORM records into validated output.
 
         Returns:
             list[Document]: A list of retrieved documents.
         """
-        response = await self.model.find(In(self.model.id, ids), session=session).to_list()
+        if not ids:
+            return []
+
+        statement = self.model.find(In(self.model.id, ids), session=session)
+        if order_by is not None:
+            order_by_list = [order_by] if isinstance(order_by, (str, tuple)) else order_by
+            sort_list = [normalize_order(item) for item in order_by_list]
+            statement = statement.sort(*sort_list)
+
+        response = await statement.to_list()
+        if serializer is not None:
+            return [serializer.model_validate(item) for item in response]
         return response
+
+    @overload
+    async def get_all(
+        self,
+        *args: Mapping[str, Any] | bool,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
+        session: AsyncIOMotorClientSession | None = None,
+        serializer: type[_PydanticBaseModel],
+    ) -> list[_PydanticBaseModel]: ...
+
+    @overload
+    async def get_all(
+        self,
+        *args: Mapping[str, Any] | bool,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
+        session: AsyncIOMotorClientSession | None = None,
+        serializer: Literal[None] = None,
+    ) -> list[Document]: ...
 
     async def get_all(
         self,
-        *args: dict[str, Any] | bool,
+        *args: Mapping[str, Any] | bool,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
         session: AsyncIOMotorClientSession | None = None,
-    ) -> list[Document]:
+        serializer: type[_PydanticBaseModel] | None = None,
+    ) -> list[Document] | list[_PydanticBaseModel]:
         """
         Retrieves all documents matching the given filters.
 
         Args:
             *args (dict[str, Any] | bool): Query filters.
+            order_by (str | tuple[str, int] | list[tuple[str, int]] | None): Sorting order. Defaults to None.
             session (AsyncIOMotorClientSession | None): Motor client async session.
+            serializer (type[_PydanticBaseModel]): Optional Pydantic model class used to
+             serialize ORM records into validated output.
 
         Returns:
             list[Document]: A list of matching documents.
         """
+        statement = self.model.find(*args, session=session)
+        if order_by is not None:
+            order_by_list = [order_by] if isinstance(order_by, (str, tuple)) else order_by
+            sort_list = [normalize_order(item) for item in order_by_list]
+            statement = statement.sort(*sort_list)
 
-        response = await self.model.find(*args, session=session).to_list()
+        response = await statement.to_list()
+        if serializer is not None:
+            return [serializer.model_validate(item) for item in response]
         return response
 
     async def get_count(
@@ -684,6 +820,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         response = await self.model.find(*args, session=session).count()
         return response
 
+    @overload
     async def get_paginate(
         self,
         *args: dict[str, Any] | bool,
@@ -691,7 +828,29 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         size: int = 20,
         order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
         session: AsyncIOMotorClientSession | None = None,
-    ) -> PaginatedResponse[Document]:
+        serializer: type[_PydanticBaseModel],
+    ) -> PaginatedResponse[_PydanticBaseModel]: ...
+
+    @overload
+    async def get_paginate(
+        self,
+        *args: dict[str, Any] | bool,
+        page: int = 1,
+        size: int = 20,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
+        session: AsyncIOMotorClientSession | None = None,
+        serializer: Literal[None] = None,
+    ) -> PaginatedResponse[Document]: ...
+
+    async def get_paginate(
+        self,
+        *args: dict[str, Any] | bool,
+        page: int = 1,
+        size: int = 20,
+        order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
+        session: AsyncIOMotorClientSession | None = None,
+        serializer: type[_PydanticBaseModel] | None = None,
+    ) -> PaginatedResponse[Document] | PaginatedResponse[_PydanticBaseModel]:
         """
         Retrieves paginated results for documents matching the given filters.
 
@@ -701,18 +860,29 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
             size (int): Page size. Defaults to 20.
             order_by (str | tuple[str, int] | list[tuple[str, int]] | None): Sorting order. Defaults to None.
             session (AsyncIOMotorClientSession | None): Motor client async session.
+            serializer (type[_PydanticBaseModel]): Optional Pydantic model class used to
+             serialize ORM records into validated output.
 
         Returns:
             dict: Paginated response containing records, total count, page, and page size.
         """
 
-        result = self.model.find(*args, session=session).skip((page - 1) * size).limit(size)
-
+        statement = self.model.find(*args, session=session).skip((page - 1) * size).limit(size)
         if order_by is not None:
-            result.sort(*order_by)
+            order_by_list = [order_by] if isinstance(order_by, (str, tuple)) else order_by
+            sort_list = [normalize_order(item) for item in order_by_list]
+            statement = statement.sort(*sort_list)
 
-        response = await result.to_list()
+        response = await statement.to_list()
         total = await self.get_count(*args, session=session)
+
+        if serializer is not None:
+            return PaginatedResponse(
+                records=[serializer.model_validate(item) for item in response],
+                total=total,
+                page=page,
+                page_size=size,
+            )
 
         return PaginatedResponse(records=response, total=total, page=page, page_size=size)
 
@@ -732,15 +902,41 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         Returns:
             Document: The created document.
         """
-        response = self.model.model_validate(create_in)
-        await response.create(session=session)
-
+        if not isinstance(create_in, dict):
+            create_in = create_in.model_dump()
+        create = self.model.model_validate(create_in)
+        response = await create.create(session=session)
         return response
+
+    async def create_all(
+        self,
+        creates_in: Sequence[CreateSchema | Document | dict[str, Any]],
+        *,
+        session: AsyncIOMotorClientSession | None = None,
+    ) -> None:
+        """
+        Create multiple documents in the database in a single batch operation.
+
+        Args:
+            creates_in (Sequence[CreateSchema | Document | dict[str, Any]]):
+                A sequence of items to be inserted. Each item can be a Pydantic schema,
+                a Document instance, or a raw dictionary.
+
+            session (AsyncIOMotorClientSession | None):
+                Optional MongoDB session for transactional support. Defaults to None.
+        """
+        if not creates_in:
+            return
+
+        update_models = [
+            self.model.model_validate(item if isinstance(item, dict) else item.model_dump()) for item in creates_in
+        ]
+        await self.model.insert_many(update_models, session=session)
 
     @staticmethod
     async def update(
         current_model: Document,
-        update_in: UpdateSchema | dict[str, Any],
+        update_in: UpdateSchema | Document | dict[str, Any],
         *,
         session: AsyncIOMotorClientSession | None = None,
     ) -> Document:
@@ -749,7 +945,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
         Args:
             current_model (Document): The document to be updated.
-            update_in (UpdateSchema | dict[str, Any]): The update data.
+            update_in (UpdateSchema | Document | dict[str, Any]): The update data.
             session (AsyncIOMotorClientSession | None): Motor client async session.
 
         Returns:
@@ -757,21 +953,19 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         """
 
         if not isinstance(update_in, dict):
-            update_in = update_in.serializable_dict(exclude_unset=True)
+            update_in = update_in.model_dump(exclude_unset=True)
 
         for field, value in update_in.items():
             setattr(current_model, field, value)
-
-        await current_model.replace(session=session)  # type: ignore
-
+        current_model = await current_model.replace(session=session)  # type: ignore
         return current_model
 
     async def update_by_id(
         self,
-        _id: PydanticObjectId,
+        _id: PydanticObjectId | None,
         /,
-        *,
         update_in: UpdateSchema | dict[str, Any],
+        *,
         session: AsyncIOMotorClientSession | None = None,
     ) -> Document:
         """
@@ -785,13 +979,51 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         Returns:
             Document: The updated document.
         """
+        if _id is None:
+            raise ValueError("requires a valid document identifier.")
 
         update_model = await self.get(_id, nullable=False)
         return await self.update(update_model, update_in, session=session)
 
+    async def update_all(
+        self,
+        updates_in: list[dict[str, Any]],
+        *,
+        session: AsyncIOMotorClientSession | None = None,
+    ) -> None:
+        """
+        Perform bulk update operations on documents using MongoDB's bulk_write.
+
+        Each item in `updates_in` must contain an "_id" key, which is used to match
+        the document, and the rest of the keys will be used as fields to update.
+
+        Args:
+            updates_in (list[dict[str, Any]]): A list of dictionaries where each dictionary
+                represents a document update. Must contain "_id" and update fields.
+            session (AsyncIOMotorClientSession | None, optional): Optional MongoDB session
+                for transactional support.
+
+        Raises:
+            ValueError: If any update dictionary does not contain the required "_id" key.
+        """
+
+        if not updates_in:
+            return
+
+        statements = []
+        for index, update_info in enumerate(updates_in):
+            _id = update_info.pop("id", None) or update_info.pop("_id", None)
+            if not _id:
+                raise ValueError(f"[index={index}] Missing 'id' in update payload.")
+
+            statements.append(UpdateOne({"_id": _id}, {"$set": update_info}))
+
+        collection = self.model.get_motor_collection()
+        await collection.bulk_write(statements, session=session)
+
     async def delete(
         self,
-        _id: PydanticObjectId,
+        _id: PydanticObjectId | None,
         /,
         *,
         session: AsyncIOMotorClientSession | None = None,
@@ -807,6 +1039,30 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
             Document: The deleted document.
         """
 
-        update_model = await self.get(_id, nullable=False, session=session)
-        await update_model.delete(session=session)  # type: ignore
-        return update_model
+        if _id is None:
+            raise ValueError("requires a valid document identifier.")
+
+        delete_model = await self.get(_id, nullable=False, session=session)
+        await delete_model.delete(session=session)  # type: ignore
+        return delete_model
+
+    async def delete_all(
+        self,
+        ids: list[PydanticObjectId | None],
+        /,
+        *,
+        session: AsyncIOMotorClientSession | None = None,
+    ) -> None:
+        """
+        Bulk delete documents by their id.
+
+        Args:
+            ids (Sequence[PydanticObjectId | None]): List of document ObjectIDs to delete.
+            session (AsyncIOMotorClientSession, optional): MongoDB transaction session.
+        """
+        if not ids:
+            return
+
+        statements = [DeleteOne({"_id": _id}) for _id in ids if _id is not None]
+        collection = self.model.get_motor_collection()
+        await collection.bulk_write(statements, session=session)

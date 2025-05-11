@@ -15,6 +15,9 @@ from src.schemas.auth import UserCreate
 from src.schemas.role import RoleCreate
 from src.utils.security import hash_password
 
+USERNAME = "admin"
+PASSWORD = "123456"
+
 roles: list[RoleCreate] = [
     RoleCreate(
         name="admin",
@@ -26,7 +29,7 @@ roles: list[RoleCreate] = [
 
 users: list[UserCreate] = [
     UserCreate(
-        name="admin", email="admin@gmail.com", username="admin", password="123456", is_admin=True, roles=["ADMIN"]
+        name="admin", email="admin@gmail.com", username=USERNAME, password=PASSWORD, is_admin=True, roles=["ADMIN"]
     ),  # type: ignore
 ]
 
@@ -36,17 +39,21 @@ async def create_user(session: AsyncSession) -> None:
         session.add(Role.model_validate(role))
 
     for user in users:
-        user_dict = user.serializable_dict()
+        user_dict = user.model_dump()
         user_dict["password"] = hash_password(user.password)
         session.add(User.model_validate(user_dict))
 
     await session.commit()
 
 
-async def init_db() -> None:
+async def init_db(session: AsyncSession) -> None:
+    await create_user(session)
+
+
+async def main() -> None:
     async with AsyncSessionLocal() as session:
-        await create_user(session)
+        await init_db(session)
 
 
 if __name__ == "__main__":
-    asyncio.run(init_db())
+    asyncio.run(main())

@@ -13,7 +13,7 @@ from minio.datatypes import Bucket, Object
 from minio.error import S3Error
 from minio.helpers import ObjectWriteResult
 
-from src.schemas.base import BaseModel
+from src.schemas import BaseModel
 from src.utils.constants import MB
 
 

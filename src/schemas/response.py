@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any, Generic, TypeVar
 from uuid import UUID
 
+from beanie import PydanticObjectId
 from fastapi import status
 from pydantic import ConfigDict, Field, field_serializer
 
@@ -25,10 +26,9 @@ class BaseResponse(BaseModel):
     model_config = ConfigDict(**(BaseModel.model_config or {}), from_attributes=True)
 
 
-class ResponseSchema(BaseResponse):
-    """Response schema."""
+class BaseSchema(BaseResponse):
+    id: UUID | PydanticObjectId
 
-    id: UUID
     create_time: datetime = Field(examples=["2024-07-31 16:07:34"])
     update_time: datetime = Field(examples=["2024-07-31 16:07:34"])
 
@@ -46,6 +46,18 @@ class ResponseSchema(BaseResponse):
             String representation of datetime in GMT
         """
         return convert_datetime_to_gmt(value)
+
+
+class ResponseSchema(BaseSchema):
+    """Response schema."""
+
+    id: UUID
+
+
+class MongoResponseSchema(BaseSchema):
+    """Mongo response schema."""
+
+    id: PydanticObjectId
 
 
 class Response(BaseResponse, Generic[T]):

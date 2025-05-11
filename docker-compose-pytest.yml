@@ -1,0 +1,37 @@
+services:
+#  pytest_postgresql:
+#    container_name: pytest_postgresql
+#    restart: always
+#    hostname: pytest_postgresql
+#    image: bitnami/postgresql
+#    volumes:
+#      - pytest_postgresql_data:/var/lib/postgresql
+#
+#    ports:
+#      - "15432:5432"
+
+  pytest_mongo:  # mongodb server
+    container_name: pytest_mongo
+    restart: always
+    hostname: pytest_mongo
+    image: mongo:latest
+
+    ports:
+      - "17018:27017"
+
+  pytest_redis:  # redis config.
+    image: redis:6.2-alpine
+    restart: always
+    hostname: pytest_redis
+    container_name: pytest_redis
+
+    command:
+      - 'redis-server'  # start redis server.
+
+    ports:
+      - "16379:6379"  # Map the host's port 36379 to the container's port 6379.
+
+networks:
+  default:
+    external: true
+    name: app_network  # network name.

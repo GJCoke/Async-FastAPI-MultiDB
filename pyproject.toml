@@ -21,8 +21,8 @@ dependencies = [
     "bcrypt==4.3.0",
     "cryptography==43.0.3",
     # Python Type
-    "pydantic-settings==2.8.1",
-    "pydantic[email]==2.11.3",
+    "pydantic-settings==2.9.1",
+    "pydantic[email]==2.11.4",
     "sqlmodel==0.0.24",
     # Socket
     "python-socketio==5.12.1",
@@ -44,7 +44,13 @@ dependencies = [
 dev = [
     "ruff==0.11.4",
     "mypy==1.15.0",
-    "pre-commit==4.2.0"
+    "pre-commit==4.2.0",
+    "pytest==8.3.5",
+    "pytest-asyncio==0.26.0",
+    "coverage==7.8.0",
+    "aiosqlite==0.21.0",
+    "httpx==0.28.1",
+    "asgi-lifespan==2.1.0",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -133,3 +139,11 @@ init_typed = true
 
 # Warning for the case of missing dynamic aliases.
 warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore:The application is currently running in the local environment.*:RuntimeWarning",
+    "ignore::pydantic.warnings.PydanticDeprecatedSince211"
+]

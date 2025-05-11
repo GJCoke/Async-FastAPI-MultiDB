@@ -59,6 +59,8 @@ class BaseSchedule(SQLModel):
     def schedule(self) -> Any: ...
 
 
+# TODO: updating Schedule is not dependent on the framework and should be defined
+#  within the model on the server. This section only provides a template.
 class IntervalSchedule(BaseSchedule, table=True):
     """Celery Interval Schedule model."""
 

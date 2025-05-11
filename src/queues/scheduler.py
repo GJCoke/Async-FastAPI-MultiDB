@@ -127,6 +127,7 @@ class Scheduler(_Scheduler):
         """
 
         now = datetime.now(UTC)
+        # TODO: if in tick update database schedule ? is it need threading ?
         if self.refresh_interval and (now - self.last_updated) > timedelta(seconds=self.refresh_interval):
             # TODO: The current implementation updates all tasks,
             #  but it should only update tasks that already exist in the database.
