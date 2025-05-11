@@ -144,5 +144,6 @@ warn_required_dynamic_aliases = true
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
-    "ignore:The application is currently running in the local environment.*:RuntimeWarning"
+    "ignore:The application is currently running in the local environment.*:RuntimeWarning",
+    "ignore::pydantic.warnings.PydanticDeprecatedSince211"
 ]

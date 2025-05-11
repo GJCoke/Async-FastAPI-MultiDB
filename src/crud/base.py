@@ -357,6 +357,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         self,
         create_in: CreateSchema | SQLModel | dict[str, Any],
         *,
+        validate: bool = True,
         session: AsyncSession | None = None,
         auto_commit: bool = False,
     ) -> SQLModel:
@@ -366,6 +367,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         Args:
             create_in (UpdateSchemaType | SQLModel | dict[str, Any]): Data to create the new record.
                 Can be a Pydantic schema, SQLModel instance, or raw dictionary.
+            validate (bool): Whether to validate input data before creation. Defaults to True.
             session (AsyncSession | None): SQLAlchemy async session for database operations.
             auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
 
@@ -377,19 +379,23 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             TypeError: If validation fails and validate=True.
         """
         session = session or self.session
-        created = self.model.model_validate(create_in)
+        if not validate:
+            if not isinstance(create_in, self.model):
+                raise TypeError(f"Expected type {type(self.model)} for 'create_in', but got {type(create_in)}.")
+        else:
+            create_in = self.model.model_validate(create_in)
 
         try:
-            session.add(created)
+            session.add(create_in)
             await session.flush()
 
             await self.commit(auto_commit=auto_commit)
-            await session.refresh(created)
+            await session.refresh(create_in)
         except IntegrityError:
             await session.rollback()
             raise ExistsException()
 
-        return created
+        return create_in  # type: ignore
 
     async def create_all(
         self,
@@ -464,7 +470,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         for field, value in update_in.items():
             setattr(current_model, field, value)
 
-        response = await self.create(current_model, session=session, auto_commit=auto_commit)
+        response = await self.create(current_model, validate=False, session=session, auto_commit=auto_commit)
         return response
 
     async def update_by_id(
@@ -632,7 +638,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
     @overload
     async def get(
         self,
-        _id: PydanticObjectId,
+        _id: PydanticObjectId | None,
         /,
         *,
         nullable: Literal[False],
@@ -642,7 +648,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
     @overload
     async def get(
         self,
-        _id: PydanticObjectId,
+        _id: PydanticObjectId | None,
         /,
         *,
         nullable: Literal[True],
@@ -652,7 +658,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
     @overload
     async def get(
         self,
-        _id: PydanticObjectId,
+        _id: PydanticObjectId | None,
         /,
         *,
         session: AsyncIOMotorClientSession | None = None,
@@ -660,7 +666,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
     async def get(
         self,
-        _id: PydanticObjectId,
+        _id: PydanticObjectId | None,
         /,
         *,
         nullable: bool = True,
@@ -681,6 +687,9 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
             NotFoundException: If the document is not found and nullable is False.
         """
 
+        if _id is None:
+            raise ValueError("requires a valid document identifier.")
+
         response = await self.model.get(document_id=_id, session=session)
 
         if not nullable and not response:
@@ -691,7 +700,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
     @overload
     async def get_by_ids(
         self,
-        ids: list[PydanticObjectId],
+        ids: list[PydanticObjectId | None],
         *,
         order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
         session: AsyncIOMotorClientSession | None = None,
@@ -701,7 +710,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
     @overload
     async def get_by_ids(
         self,
-        ids: list[PydanticObjectId],
+        ids: list[PydanticObjectId | None],
         *,
         order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
         session: AsyncIOMotorClientSession | None = None,
@@ -710,7 +719,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
     async def get_by_ids(
         self,
-        ids: list[PydanticObjectId],
+        ids: list[PydanticObjectId | None],
         *,
         order_by: str | tuple[str, SortDirection] | list[tuple[str, SortDirection]] | None = None,
         session: AsyncIOMotorClientSession | None = None,
@@ -953,7 +962,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
     async def update_by_id(
         self,
-        _id: PydanticObjectId,
+        _id: PydanticObjectId | None,
         /,
         update_in: UpdateSchema | dict[str, Any],
         *,
@@ -970,6 +979,8 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         Returns:
             Document: The updated document.
         """
+        if _id is None:
+            raise ValueError("requires a valid document identifier.")
 
         update_model = await self.get(_id, nullable=False)
         return await self.update(update_model, update_in, session=session)
@@ -1012,7 +1023,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
 
     async def delete(
         self,
-        _id: PydanticObjectId,
+        _id: PydanticObjectId | None,
         /,
         *,
         session: AsyncIOMotorClientSession | None = None,
@@ -1028,13 +1039,16 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
             Document: The deleted document.
         """
 
+        if _id is None:
+            raise ValueError("requires a valid document identifier.")
+
         delete_model = await self.get(_id, nullable=False, session=session)
         await delete_model.delete(session=session)  # type: ignore
         return delete_model
 
     async def delete_all(
         self,
-        ids: list[PydanticObjectId],
+        ids: list[PydanticObjectId | None],
         /,
         *,
         session: AsyncIOMotorClientSession | None = None,
@@ -1043,12 +1057,12 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         Bulk delete documents by their id.
 
         Args:
-            ids (Sequence[PydanticObjectId]): List of document ObjectIDs to delete.
+            ids (Sequence[PydanticObjectId | None]): List of document ObjectIDs to delete.
             session (AsyncIOMotorClientSession, optional): MongoDB transaction session.
         """
         if not ids:
             return
 
-        statements = [DeleteOne({"_id": _id}) for _id in ids]
+        statements = [DeleteOne({"_id": _id}) for _id in ids if _id is not None]
         collection = self.model.get_motor_collection()
         await collection.bulk_write(statements, session=session)

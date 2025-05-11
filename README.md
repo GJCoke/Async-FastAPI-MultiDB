@@ -9,7 +9,6 @@ This is a production-ready asynchronous backend template built with FastAPI, fea
 ---
 
 ## Features
-
 - **Asynchronous Architecture:** Fully utilizes `async/await` to maximize performance.
 - **SQL & NoSQL Support:** Built-in support for SQLModel/SQLAlchemy (for relational databases like MySQL and PostgreSQL) and Beanie (an ODM for MongoDB), allowing hybrid data storage.
 - **Modular Project Structure:** Well-organized with separation of concerns across routers, models, services, and database operations. Easy to scale and maintain for large projects.
@@ -31,6 +30,8 @@ This is a production-ready asynchronous backend template built with FastAPI, fea
   - High-performance Permission Validation Mechanism
 
 > 🚧 This project is under active development. Feel free to follow, star the repo, or contribute via issues and PRs.
+
+---
 
 ## Async-FastAPI-MultiDB Project Architecture Overview
 <div align="center">
@@ -112,8 +113,9 @@ src/
 
 ```
 
-## Installation
+---
 
+## Installation
 1. Clone the repository:
     ```bash
     git clone https://github.com/GJCoke/Async-FastAPI-MultiDB.git
@@ -136,12 +138,23 @@ src/
     docker compose exec app scripts/alembic-makemigrations.sh "Initialize Database"
     docker compose exec app scripts/alembic-migrate.sh
     ```
+
 5. Run the initdb script to generate the necessary initial data.
     ```bash
     docker compose exec app scripts/initdb.sh
     ```
 
-6. Development workflow:
+6. Default Username and Password
+
+    After initialization, a default user will be created with the following credentials:
+    - **Username**：`admin`
+    - **Password**：`123456`
+
+    > These credentials can be used to access the system or for debugging authentication-related endpoints.
+    >
+    > ⚠️ Please make sure to change the default password promptly in production environments!
+
+7. Development workflow:
     This project uses `pre-commit` to enforce code quality and consistency:
     ```bash
     pre-commit install
@@ -153,24 +166,63 @@ src/
     > - Static type checking with `mypy`
 
 > Access the Swagger UI at: [http://localhost:16000/docs](http://localhost:16000/docs)
+
 #### Example 1
 ![swagger-1](docs/images/swagger-1.png)
 #### Example 2
 > Error responses are globally enhanced—no need to define them on each route individually.
 
 ![swagger-2](docs/images/swagger-2.png)
----
 
 ---
+
+## Running Tests (with Pytest)
+Before running the tests, please ensure you’ve completed the following setup:
+
+1. Copy Environment Configuration：
+    ```bash
+    cp .env.pytest.example .env.pytest
+    ```
+
+2. Configure Database Connections
+
+   > You can either manually configure .env.pytest, or simply start the pre-configured test database containers using Docker.
+
+   - **Option A: Start test databases with Docker**
+      ```bash
+      docker compose -f docker-compose-pytest.yml up -d --build
+      ```
+   - **Option B: Manually configure .env.pytest**
+      ```dotenv
+       # MongoDB (required)
+       MONGO_DATABASE_URL=mongodb://localhost:27017
+
+       # Redis (required)
+       REDIS_DATABASE_URL=redis://localhost:6379
+
+       # SQLite (default relational database, optional)
+       SQL_DATABASE_URL=sqlite+aiosqlite://
+      ```
+
+3. Run the Tests
+   ```bash
+   pytest -s
+   ```
+
+4. Run your tests with coverage
+   ```bash
+   coverage run -m pytest
+   ```
+
+---
+
 ## Auth Module Overview
-
 This module handles authentication and authorization, built upon JWT + Redis + RSA + RBAC.
 <div align="center">
   <img src="./docs/images/rbac.svg" alt="FastAPI">
 </div>
 
 ### Features Overview
-
 - User login via username and password
 - AccessToken / RefreshToken generation and validation
 - Token refresh
@@ -180,7 +232,6 @@ This module handles authentication and authorization, built upon JWT + Redis + R
 - RBAC access control model
 
 ### Password Encryption (RSA)
-
 > You don't need to worry about Swagger UI being affected by RSA encryption — it uses an independent login flow, which only works in the `DEBUG` environment.
 
 During login, the frontend encrypts the password using the RSA public key provided by the backend. The backend then decrypts it using the private key, ensuring that the password is never transmitted in plain text.
@@ -192,7 +243,6 @@ During login, the frontend encrypts the password using the RSA public key provid
 > Dynamic keys can lead to inconsistent behavior across multiple services or instances, especially in environments with load balancing or distributed caching (e.g., Redis).
 
 ### Token Description
-
 - **AccessToken:** Short-lived, stored on the client, used for authenticating API requests
 - **RefreshToken:** Long-lived, stored in Redis, used to refresh access tokens
 
@@ -201,7 +251,6 @@ During login, the frontend encrypts the password using the RSA public key provid
 ### RBAC
 - No need to manually define permission codes for each API endpoint; the system automatically generates and matches permission identifiers based on the endpoint path and HTTP method, achieving fully automated permission management.
 - User permission data is stored in Redis as structured data and cached according to the access-token lifecycle, effectively reducing database lookups and greatly improving permission-check efficiency and overall system response speed.
-
 
 ### Core Dependencies
 
@@ -240,7 +289,6 @@ During login, the frontend encrypts the password using the RSA public key provid
 ## Celery
 
 ### DatabaseScheduler — Dynamic Database-based Scheduler
-
 The custom `DatabaseScheduler` dynamically loads periodic tasks from the database, refreshing at configurable intervals:
 
 - Works like `django-celery-beat` but framework-agnostic (built for FastAPI)
@@ -261,9 +309,10 @@ app.conf.update({"timezone": settings.CELERY_TIMEZONE, "database_url": DATABASE_
 
 app.autodiscover_tasks(["src.queues.tasks"])
 ```
+
 Run beat with: `celery -A "src.queues.app" beat -S "src.queues.scheduler:AsyncDatabaseScheduler" -l info`
 
-AsyncTask — Native Async Task Support
+### AsyncTask — Native Async Task Support
 Our custom task base class auto-detects async def functions and handles execution:
 
 - Automatically runs async def tasks in the proper event loop
@@ -282,14 +331,16 @@ async def run_async_task() -> None:
     print("async task done.")
 
 ```
+
 Run worker with: `celery -A "src.queues.app" worker -l info`
 
-#### TypedCelery — IDE-Friendly Celery Wrapper
+### TypedCelery — IDE-Friendly Celery Wrapper
 Enhances native Celery with improved type hinting and IDE integration:
 
 - Refactored class definitions to return accurate types
 - Enables smart autocomplete and error detection in IDEs like PyCharm or VSCode
 - Greatly improves development speed and reduces bugs in large teams
+
 #### Example 1
 ![celery-type-1](docs/images/celery-type-1.png)
 #### Example 2

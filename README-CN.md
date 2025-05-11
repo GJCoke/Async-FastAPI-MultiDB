@@ -120,53 +120,108 @@ src/
     git clone https://github.com/GJCoke/Async-FastAPI-MultiDB.git
     cd Async-FastAPI-MultiDB
     ```
+
 2. 复制环境变量信息：
     ```bash
     cp .env.example .env
     ```
+
 3. 运行Docker
     ```bash
     docker network create app_network
     docker compose up -d --build
     ```
+
 4. 运行 Alembic 创建数据库结构
     ```bash
     docker compose exec app scripts/alembic-makemigrations.sh "Init Database"
     docker compose exec app scripts/alembic-migrate.sh
     ```
+
 5. 运行 initdb 脚本生成初始数据
     ```bash
     docker compose exec app scripts/initdb.sh
     ```
 
-6. 开发
+6. 默认用户名密码
+
+    初始化后将生成一个默认用户，默认账号信息如下：
+    - **用户名**：`admin`
+    - **密码**：`123456`
+
+    > 可用于访问系统或用于调试身份验证相关接口。
+    >
+    > ⚠️请在生产环境中及时修改默认密码！
+
+7. 开发
    本项目使用 `pre-commit` 来确保代码在提交前的质量和一致性。它会在代码提交前自动运行检查工具和格式化工具。
     ```bash
     pre-commit install
     ```
+
    > `pre-commit` 的配置文件是 `.pre-commit-config.yaml`，其中包含以下钩子：
    > - 大文件检查：提交的代码中是否添加了过大的文件。
    > - 代码格式化：使用 ruff 自动格式化代码。
    > - 静态代码检查：使用 mypy 进行静态代码检查。
 
 > 访问 [http://localhost:16000/docs](http://localhost:16000/docs) 即可查看 Swagger 文档
+
 #### 示例1
 ![swagger-1](docs/images/swagger-1.png)
 #### 示例2
 > 错误响应已统一增强处理，无需在每个路由中单独添加错误响应。
 
 ![swagger-2](docs/images/swagger-2.png)
+
+---
+
+## 运行测试（使用 Pytest）
+在运行测试前，请确保你完成了以下准备工作：
+
+1. 复制环境变量配置：
+    ```bash
+    cp .env.pytest.example .env.pytest
+    ```
+
+2. 配置数据库连接信息
+
+   > 你可以手动配置 .env.pytest 中的数据库连接，也可以直接启动预配置的测试数据库 Docker：
+
+   - **选项A：使用 Docker 启动测试数据库**
+      ```bash
+      docker compose -f docker-compose-pytest.yml up -d --build
+      ```
+   - **选项 B：手动配置 .env.pytest**
+      ```dotenv
+       # MongoDB（必填）
+       MONGO_DATABASE_URL=mongodb://localhost:27017
+
+       # Redis（必填）
+       REDIS_DATABASE_URL=redis://localhost:6379
+
+       # SQLite（默认关系型数据库）
+       SQL_DATABASE_URL=sqlite+aiosqlite://
+      ```
+
+3. 运行测试
+   ```bash
+   pytest -s
+   ```
+
+4. 运行覆盖率测试
+   ```bash
+   coverage run -m pytest
+   ```
+
 ---
 
 ## Auth 模块说明
-
 本模块用于处理认证授权、鉴权相关功能，基于 JWT + Redis + RSA + RBAC 实现。
 <div align="center">
   <img src="./docs/images/rbac-cn.svg" alt="FastAPI">
 </div>
 
 ### 功能概述
-
 - 用户登录（用户名密码）
 - AccessToken / RefreshToken 生成与校验
 - Token 刷新
@@ -176,13 +231,10 @@ src/
 - RBAC 访问控制模型
 
 ### 密码加密（RSA）
-
 > 无需担心添加 RSA 后 Swagger 文档无法使用，因为 Swagger 文档有独立的登录逻辑，并且该逻辑仅在 DEBUG 环境下生效。
 
-登录时前端使用后端提供的 RSA 公钥加密密码，后端使用私钥解密。
-保证密码传输过程中不会明文暴露。
+登录时前端使用后端提供的 RSA 公钥加密密码，后端使用私钥解密。保证密码传输过程中不会明文暴露。
 
->
 > 密钥对建议由环境配置提供。
 >
 > 当前 `DEBUG` 环境支持动态生成, 但是不推荐在部署环境中使用。
@@ -190,7 +242,6 @@ src/
 > 在多个服务或实例中使用动态生成会导致不一致的行为，特别是在负载均衡或分布式缓存（如 Redis）等情况下。
 
 ### Token 说明
-
 - **AccessToken:** 短效，存在客户端，用于接口鉴权
 - **RefreshToken:** 长效，存在 Redis，支持刷新操作
 
@@ -215,7 +266,6 @@ src/
 | `VerifyPermissionDep`   | 基于路由校验用户访问权限                   |
 
 ### 路由简述
-
 - `GET /keys/public`：获取用于加密密码的RSA公钥
 - `POST /login`：用户登录，返回 access_token 和 refresh_token
 - `POST /token/refresh`：刷新 token，需携带 refresh_token 和 User-Agent
@@ -224,7 +274,6 @@ src/
 - `GET /router/backend`：获取应用路由
 
 ### Redis 结构
-
 - 存储 Key： `auth:refresh:<{user_id}>:<{jti}>`
 - 存储 Value：RefreshToken（含 `created_at`, `refresh_token`, `user-agent` 等）
 - 存储 Key： `auth:permission:<{user_id}>`
@@ -261,7 +310,7 @@ app.autodiscover_tasks(["src.queues.tasks"])
 
 运行 Celery beat `celery -A "src.queues.app" beat -S "src.queues.scheduler:AsyncDatabaseScheduler" -l info`
 
-### AsyncTask — 原生支持 async def 的任务
+### AsyncTask — 原生支持 async def
 通过自定义 Task 基类，让 Celery 支持异步任务的自动识别与执行：
 
 - 如果任务是 async def，自动使用 asyncio.run() 或当前事件循环运行
@@ -290,6 +339,7 @@ async def run_async_task() -> None:
 - 重写了 Celery 部分函数和类，使返回值和函数签名在 IDE 中更加明确
 - 在 PyCharm、VSCode 中智能提示参数与返回值，减少低级错误
 - 对新手或大型项目尤其友好，提升团队开发效率
+
 #### 示例1
 ![celery-type-1](docs/images/celery-type-1.png)
 #### 示例2
