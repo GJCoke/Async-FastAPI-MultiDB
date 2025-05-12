@@ -8,26 +8,62 @@
 
 ---
 
-## 特点
-- **异步架构：** 全面支持 `async/await` 提高性能。
-- **SQL & NoSQL 集成：** 支持 SQLModel/SQLAlchemy（MySQL 和 PostgreSQL等关系型数据库）以及 Beanie（基于 MongoDB 的 ODM），可同时使用关系型数据库和文档数据库，满足多种数据存储需求。
-- **模块化设计：** 采用清晰的项目结构，将路由、模型、服务层、数据库操作等功能解耦，便于维护和扩展，可适应大型项目开发。
-- **自动文档生成：** 利用 FastAPI 内置功能自动生成 API 文档。
-- **基于环境的配置管理：** 简化不同环境下的配置切换。
-- **对象存储系统 MinIO：** MinIO 是一个开源的分布式对象存储系统，兼容 Amazon S3 API，支持通过 S3 协议与国内云服务（如阿里云、腾讯云）进行集成。
-  - 如果你曾使用 boto3，推荐切换到 MinIO 提供的 Python SDK，它更加现代、智能，并且优化了性能和易用性。
-  - 本项目封装了一些常用的 S3 接口功能，例如：获取预签名上传链接、支持分块上传、生成下载地址、获取存储桶信息等。
-  - 更多细节请参考 `src.utils.minio_client.py` 文件中的实现。
-- **Celery 增强功能（[更多详情](#celery)）：**
-  - 数据库动态调度（类似 `django-celery-beat`，但与框架无关）
-  - 异步任务原生支持（自动兼容 `async def` 函数）
-  - 更友好的 IDE 类型提示（改善开发体验)
-- **认证与授权功能，基于 JWT + Redis + RSA + RBAC权限 实现([详细说明](#Auth-模块说明))：**
-  - 支持 Access Token 与 Refresh Token
-  - 登录密码通过 RSA 加密传输，提升安全性
-  - 依赖注入基于类型注解，便于统一管理与功能扩展
-  - 基于路由的 RBAC 权限系统
-  - 高性能权限校验机制
+## 目录总览
+
+- [项目特点](#项目特点)
+- [快速开始](#快速开始)
+- [项目架构概览](#Async-FastAPI-MultiDB-项目架构概览)
+- [项目结构](#目录结构说明)
+- [ Celery 异步任务增强](#Celery)
+- [身份认证与权限系统](#Auth-模块说明)
+- [测试说明](#运行测试使用-Pytest)
+- [License](#许可证)
+
+## 项目特点
+### 异步架构
+- 全面支持 `async/await` 异步处理，提升并发性能，适合高负载 API 服务。
+
+### SQL & NoSQL 双数据库集成
+- 同时支持：
+  - **SQLModel / SQLAlchemy**：支持 MySQL、PostgreSQL 等关系型数据库。
+  - **Beanie**：MongoDB 的异步 ODM，适合文档数据库场景。
+- 灵活组合使用，满足复杂业务对多种数据模型的需求。
+
+### 模块化设计
+- 路由、模型、服务、数据库操作等高内聚低耦合，项目结构清晰，便于维护与扩展。
+- 适用于大型项目开发及多人协作。
+
+### 自动 API 文档
+- 利用 FastAPI 的内置特性，自动生成交互式 API 文档（支持 Swagger 和 Redoc）。
+
+### 环境配置管理
+- 支持基于 `.env` 文件的多环境切换。
+- 使用 `pydantic-settings` 管理配置，安全、灵活、易扩展。
+
+### 对象存储 MinIO 封装
+- 集成 MinIO，兼容 Amazon S3 协议，可无缝对接阿里云、腾讯云等。
+- 封装常用功能，开箱即用：
+  - 获取预签名上传链接
+  - 分块上传支持
+  - 文件下载地址生成
+  - 存储桶信息管理
+- 推荐使用官方 Python SDK，替代 boto3，性能更优，API 更简洁。
+- 实现细节可参考：`src/utils/minio_client.py`
+
+### Celery 异步任务增强（[详情](#Celery)）
+- 类似 `django-celery-beat` 的动态任务调度（但与框架无关）
+- 原生支持 `async def` 异步任务，自动适配。
+- 更加友好的类型提示和 IDE 体验。
+
+### 认证与权限系统（[详情](#Auth-模块说明)）
+- **身份验证**：
+  - 支持 Access Token + Refresh Token 双 token 模式
+  - 登录密码通过 **RSA 加密** 提交，保障传输安全
+- **权限控制**：
+  - 基于路由的 **角色（RBAC） 权限模型**
+  - 权限缓存基于 Redis，实现高性能校验
+- **开发体验**：
+  - 使用 FastAPI 的依赖注入系统进行权限注入，类型注解明确，方便扩展
 
 > 🚧 本项目持续开发中，欢迎关注、Star 或提出 Issue 与 PR。
 
@@ -114,7 +150,7 @@ src/
 
 ---
 
-## 安装
+## 快速开始
 1. 克隆仓库：
     ```bash
     git clone https://github.com/GJCoke/Async-FastAPI-MultiDB.git
@@ -187,21 +223,21 @@ src/
 
    > 你可以手动配置 .env.pytest 中的数据库连接，也可以直接启动预配置的测试数据库 Docker：
 
-   - **选项A：使用 Docker 启动测试数据库**
-      ```bash
-      docker compose -f docker-compose-pytest.yml up -d --build
-      ```
-   - **选项 B：手动配置 .env.pytest**
-      ```dotenv
-       # MongoDB（必填）
-       MONGO_DATABASE_URL=mongodb://localhost:27017
+   **选项A：使用 Docker 启动测试数据库**
+   ```bash
+    docker compose -f docker-compose-pytest.yml up -d --build
+   ```
+   **选项 B：手动配置 .env.pytest**
+   ```dotenv
+    # MongoDB（必填）
+    MONGO_DATABASE_URL=mongodb://localhost:27017
 
-       # Redis（必填）
-       REDIS_DATABASE_URL=redis://localhost:6379
+    # Redis（必填）
+    REDIS_DATABASE_URL=redis://localhost:6379
 
-       # SQLite（默认关系型数据库）
-       SQL_DATABASE_URL=sqlite+aiosqlite://
-      ```
+    # SQLite（默认关系型数据库）
+    SQL_DATABASE_URL=sqlite+aiosqlite://
+   ```
 
 3. 运行测试
    ```bash
@@ -357,6 +393,6 @@ async def run_async_task() -> None:
 ---
 
 ## 许可证
-本项目基于 Apache-2.0 许可证，详见 [LICENSE](LICENSE) 文件。
+本项目基于 MIT 许可证，详见 [LICENSE](LICENSE) 文件。
 
 ---

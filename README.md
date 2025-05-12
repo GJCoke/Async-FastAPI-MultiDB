@@ -8,26 +8,65 @@ This is a production-ready asynchronous backend template built with FastAPI, fea
 
 ---
 
-## Features
-- **Asynchronous Architecture:** Fully utilizes `async/await` to maximize performance.
-- **SQL & NoSQL Support:** Built-in support for SQLModel/SQLAlchemy (for relational databases like MySQL and PostgreSQL) and Beanie (an ODM for MongoDB), allowing hybrid data storage.
-- **Modular Project Structure:** Well-organized with separation of concerns across routers, models, services, and database operations. Easy to scale and maintain for large projects.
-- **Auto API Documentation:** Automatically generated via FastAPI’s built-in OpenAPI support.
-- **Environment-based Configuration:** Simplified switching between different deployment environments.
-- **Object Storage with MinIO:** MinIO is an open-source distributed object storage system compatible with the Amazon S3 API. It can be easily integrated with Chinese cloud providers (e.g., Alibaba Cloud, Tencent Cloud).
-  - Compared to `boto3`, MinIO’s Python SDK offers a more modern, intelligent, and performant experience.
-  - This project encapsulates several commonly used S3 API features, such as generating presigned upload URLs, supporting multipart uploads, creating download links, and retrieving bucket information.
-  - For more details, please refer to the implementation in `src.utils.minio_client.py`.
-- **Enhanced Celery Integration (see [Celery](#celery)):**
-  - Dynamic database scheduling (similar to `django-celery-beat` but framework-agnostic)
-  - Native async task support (`async def`)
-  - Better type hinting in IDEs for improved development experience
-- **Authentication & Authorization powered by JWT + Redis + RSA + RBAC ([Details](#Auth-Module-Overview)):**
-  - Uses JWT to distinguish between Access and Refresh Tokens
-  - Passwords are encrypted using RSA for secure transmission
-  - Fully type-annotated dependencies with FastAPI for easy reuse and extensibility
-  - Route-based RBAC Permission System
-  - High-performance Permission Validation Mechanism
+## Table of Contents
+
+- [Project Features](#project-features)
+- [Quick Start](#quick-start)
+- [Architecture Overview](#Async-FastAPI-MultiDB-Project-Architecture-Overview)
+- [Project Structure](#Directory-Structure-Description)
+- [Celery Task Enhancements](#celery)
+- [Authentication & Authorization](#Auth-Module-Overview)
+- [Testing Guide](#Running-Tests-with-Pytest))
+- [License](#license)
+
+## Project Features
+
+### Asynchronous Architecture
+- Fully supports `async/await` for high-concurrency performance and responsiveness.
+- Ideal for building high-throughput API services.
+
+### SQL & NoSQL Integration
+- Supports both:
+  - **SQLModel / SQLAlchemy**: for relational databases like MySQL and PostgreSQL.
+  - **Beanie**: asynchronous ODM for MongoDB, suitable for document-oriented storage.
+- Flexible combination enables support for complex, hybrid data needs.
+
+### Modular Design
+- Clean separation of routers, models, services, and database logic.
+- Highly cohesive and loosely coupled, suitable for large-scale projects and team collaboration.
+
+### Automatic API Documentation
+- Built-in FastAPI interactive documentation via Swagger and Redoc.
+
+### Environment-Based Configuration
+- Supports environment switching with `.env` files.
+- Manages settings securely and flexibly using `pydantic-settings`.
+
+### MinIO Integration (Object Storage)
+- Integrated with MinIO, compatible with Amazon S3 API.
+- Seamlessly connects to domestic cloud storage (e.g., Alibaba Cloud, Tencent Cloud).
+- Prebuilt utilities included:
+  - Generate pre-signed upload URLs
+  - Multipart upload support
+  - Generate secure download URLs
+  - Manage bucket metadata
+- Recommended to use the official Python SDK for better performance and ease of use (instead of `boto3`).
+- For implementation, refer to `src/utils/minio_client.py`.
+
+### Celery Task Enhancements ([Details](#celery))
+- Dynamic scheduling from database (like `django-celery-beat`, but framework-agnostic).
+- Native support for `async def` tasks with automatic adaptation.
+- Better IDE type hints for a smoother development experience.
+
+### Authentication & Authorization ([Details](#Auth-Module-Overview))
+- **Authentication**:
+  - Supports both Access Token and Refresh Token.
+  - Passwords are encrypted using **RSA** during transmission.
+- **Authorization**:
+  - Route-based **RBAC (Role-Based Access Control)** system.
+  - Redis-based caching for high-performance permission checks.
+- **Developer Experience**:
+  - Uses FastAPI's dependency injection with type hints for clean and extensible security logic.
 
 > 🚧 This project is under active development. Feel free to follow, star the repo, or contribute via issues and PRs.
 
@@ -115,7 +154,7 @@ src/
 
 ---
 
-## Installation
+## Quick Start
 1. Clone the repository:
     ```bash
     git clone https://github.com/GJCoke/Async-FastAPI-MultiDB.git
@@ -188,21 +227,21 @@ Before running the tests, please ensure you’ve completed the following setup:
 
    > You can either manually configure .env.pytest, or simply start the pre-configured test database containers using Docker.
 
-   - **Option A: Start test databases with Docker**
-      ```bash
-      docker compose -f docker-compose-pytest.yml up -d --build
-      ```
-   - **Option B: Manually configure .env.pytest**
-      ```dotenv
-       # MongoDB (required)
-       MONGO_DATABASE_URL=mongodb://localhost:27017
+   **Option A: Start test databases with Docker**
+   ```bash
+    docker compose -f docker-compose-pytest.yml up -d --build
+   ```
+   **Option B: Manually configure .env.pytest**
+   ```dotenv
+    # MongoDB (required)
+    MONGO_DATABASE_URL=mongodb://localhost:27017
 
-       # Redis (required)
-       REDIS_DATABASE_URL=redis://localhost:6379
+    # Redis (required)
+    REDIS_DATABASE_URL=redis://localhost:6379
 
-       # SQLite (default relational database, optional)
-       SQL_DATABASE_URL=sqlite+aiosqlite://
-      ```
+    # SQLite (default relational database, optional)
+    SQL_DATABASE_URL=sqlite+aiosqlite://
+   ```
 
 3. Run the Tests
    ```bash
