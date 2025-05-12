@@ -15,9 +15,6 @@ from celery.schedules import crontab as Crontab
 from celery.schedules import schedule as Schedule
 from celery.schedules import solar as Solar
 from pydantic import BaseModel
-from sqlmodel import JSON, Column, Field
-
-from src.models.base import SQLModel
 
 
 class Period(Enum):
@@ -46,7 +43,7 @@ class SolarEvent(Enum):
     DUSK_ASTRONOMICAL = "dusk_astronomical"
 
 
-class BaseSchedule(SQLModel):
+class BaseSchedule:
     """
     Base schedule model.
 
@@ -54,17 +51,15 @@ class BaseSchedule(SQLModel):
     custom scheduler classes that inherit from Scheduler should explicitly implement the schedule property.
     """
 
+    id: Any
+
     @property
     @abstractmethod
     def schedule(self) -> Any: ...
 
 
-# TODO: updating Schedule is not dependent on the framework and should be defined
-#  within the model on the server. This section only provides a template.
-class IntervalSchedule(BaseSchedule, table=True):
+class IntervalSchedule(BaseSchedule):
     """Celery Interval Schedule model."""
-
-    __tablename__ = "celery_interval_schedule"
 
     every: int
     period: Period
@@ -76,10 +71,8 @@ class IntervalSchedule(BaseSchedule, table=True):
         )
 
 
-class CrontabSchedule(BaseSchedule, table=True):
+class CrontabSchedule(BaseSchedule):
     """Celery Crontab Schedule model."""
-
-    __tablename__ = "celery_crontab_schedule"
 
     minute: str = "*"
     hour: str = "*"
@@ -98,10 +91,8 @@ class CrontabSchedule(BaseSchedule, table=True):
         )
 
 
-class SolarSchedule(BaseSchedule, table=True):
+class SolarSchedule(BaseSchedule):
     """Celery Solar Schedule model."""
-
-    __tablename__ = "celery_solar_schedule"
 
     event: SolarEvent
     latitude: int
@@ -182,18 +173,16 @@ class Options(BaseModel):
     retry_policy: RetryPolicy
 
 
-class PeriodicTask(SQLModel, table=True):
+class PeriodicTask:
     """Celery Periodic Task Model."""
-
-    __tablename__ = "celery_periodic_task"
 
     name: str
     enabled: bool = True
     description: str = ""
 
-    task: str = Field(..., description="task 位置")
+    task: str
     task_type: TaskType
     schedule_id: UUID
-    args: list[Any] = Field([], sa_column=Column(JSON))
-    kwargs: dict[str, Any] = Field({}, sa_column=Column(JSON))
-    options: Options | None = Field(None, sa_column=Column(JSON))
+    args: list[Any] | None
+    kwargs: dict[str, Any] | None
+    options: Options | None

@@ -21,4 +21,8 @@ repos:
         additional_dependencies:
           - types-toml
           - pydantic
+          - sqlmodel==0.0.24
+          - pydantic[email]==2.11.4
+          - beanie==1.29.0
         exclude: ^tests/
+        language_version: python3.12

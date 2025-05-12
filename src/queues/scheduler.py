@@ -18,8 +18,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from src.models import PeriodicTask
 from src.queues.celery import Celery
-from src.queues.models import PeriodicTask
 
 logger = get_logger("celery.queues.scheduler")
 
@@ -127,10 +127,8 @@ class Scheduler(_Scheduler):
         """
 
         now = datetime.now(UTC)
-        # TODO: if in tick update database schedule ? is it need threading ?
+        # TODO: apscheduler ?
         if self.refresh_interval and (now - self.last_updated) > timedelta(seconds=self.refresh_interval):
-            # TODO: The current implementation updates all tasks,
-            #  but it should only update tasks that already exist in the database.
             self.setup_schedule()
             self.last_updated = now
 
