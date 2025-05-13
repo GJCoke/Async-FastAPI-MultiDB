@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from httpx import ASGITransport, AsyncClient
 from pydantic import MongoDsn, RedisDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from redis.asyncio import ConnectionPool, Redis
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -67,6 +68,16 @@ async def session() -> AsyncIterator[AsyncSession]:
 
     async with async_session() as session:
         yield session
+
+
+@pytest_asyncio.fixture
+async def redis() -> AsyncIterator[Redis]:
+    pool = ConnectionPool.from_url(str(pytest_settings.REDIS_DATABASE_URL), max_connections=10, decode_responses=True)
+    client = Redis(connection_pool=pool)
+
+    yield client
+
+    await pool.disconnect()
 
 
 @pytest_asyncio.fixture

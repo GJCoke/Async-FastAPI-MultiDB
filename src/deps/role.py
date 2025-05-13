@@ -9,8 +9,8 @@ from fastapi import Depends
 from typing_extensions import Annotated, Doc
 
 from src.core.config import auth_settings
-from src.core.database import AsyncRedisClient
 from src.core.exceptions import PermissionDeniedException
+from src.core.redis_client import AsyncRedisClient
 from src.crud.role import RoleCRUD
 from src.deps import RedisDep, SessionDep
 from src.deps.auth import UserDBDep

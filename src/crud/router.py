@@ -12,7 +12,7 @@ from typing import Any
 from sqlmodel import delete
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.crud.base import BaseSQLModelCRUD
+from src.crud.crud_sqlmodel import BaseSQLModelCRUD
 from src.models.router import InterfaceRouter
 from src.schemas.router import FastAPIRouterCreate, FastAPIRouterUpdate
 

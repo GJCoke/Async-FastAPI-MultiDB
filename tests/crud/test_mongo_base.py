@@ -12,7 +12,7 @@ from beanie.operators import In
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from src.core.exceptions import InvalidParameterError, NotFoundException
-from src.crud.base import BaseBeanieCRUD
+from src.crud.crud_beanie import BaseBeanieCRUD
 from src.models.base import Document
 from src.schemas import BaseRequest, BaseResponse
 from tests.conftest import pytest_settings

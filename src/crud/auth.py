@@ -14,7 +14,7 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.exceptions import BadRequestException
-from src.crud.base import BaseSQLModelCRUD
+from src.crud.crud_sqlmodel import BaseSQLModelCRUD
 from src.models.auth import User
 from src.schemas.auth import UserCreate, UserUpdate
 

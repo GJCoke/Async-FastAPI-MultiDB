@@ -8,7 +8,7 @@ Date    : 2025-04-24
 from sqlmodel import col
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.crud.base import BaseSQLModelCRUD
+from src.crud.crud_sqlmodel import BaseSQLModelCRUD
 from src.models.auth import Role
 from src.schemas.role import RoleCreate, RoleUpdate
 

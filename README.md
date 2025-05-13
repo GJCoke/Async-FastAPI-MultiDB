@@ -16,7 +16,7 @@ This is a production-ready asynchronous backend template built with FastAPI, fea
 - [Project Structure](#Directory-Structure-Description)
 - [Celery Task Enhancements](#celery)
 - [Authentication & Authorization](#Auth-Module-Overview)
-- [Testing Guide](#Running-Tests-with-Pytest))
+- [Testing Guide](#Running-Tests-with-Pytest)
 - [License](#license)
 
 ## Project Features
@@ -251,7 +251,7 @@ Before running the tests, please ensure you’ve completed the following setup:
 4. Run your tests with coverage
    ```bash
     # Run tests and collect coverage data
-    coverage run -m pytest --source=src
+    coverage run -m --source=src pytest -s tests/
 
     # Display a brief coverage report
     coverage report

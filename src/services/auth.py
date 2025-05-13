@@ -14,8 +14,8 @@ import time
 from uuid import UUID
 
 from src.core.config import auth_settings
-from src.core.database import AsyncRedisClient
 from src.core.exceptions import BadRequestException, PermissionDeniedException
+from src.core.redis_client import AsyncRedisClient
 from src.crud.auth import UserCRUD
 from src.crud.role import RoleCRUD
 from src.deps.auth import refresh_structure

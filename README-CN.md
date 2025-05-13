@@ -247,7 +247,7 @@ src/
 4. 运行覆盖率测试
    ```bash
    # 运行测试并收集覆盖率数据
-   coverage run -m pytest --source=src
+   coverage run -m --source=src pytest -s tests/
 
    # 查看简要覆盖率报告
    coverage report

@@ -15,7 +15,7 @@ from sqlmodel import SQLModel as _SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.exceptions import ExistsException, InvalidParameterError, NotFoundException
-from src.crud.base import BaseSQLModelCRUD
+from src.crud.crud_sqlmodel import BaseSQLModelCRUD
 from src.models.base import SQLModel
 from src.schemas import BaseRequest, BaseResponse
 from tests.conftest import engine

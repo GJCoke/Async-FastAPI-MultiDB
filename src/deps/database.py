@@ -10,7 +10,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from typing_extensions import Annotated, Doc
 
 from src.core.config import settings
-from src.core.database import AsyncRedisClient, RedisManager, get_async_session
+from src.core.database import RedisManager, get_async_session
+from src.core.redis_client import AsyncRedisClient
 
 __all__ = [
     "SessionDep",
