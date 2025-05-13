@@ -9,11 +9,12 @@ Date   : 2025-05-08
 
 import pytest
 import pytest_asyncio
+from sqlalchemy.exc import SQLAlchemyError
+from sqlmodel import Field, col, delete
 from sqlmodel import SQLModel as _SQLModel
-from sqlmodel import col, delete
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.core.exceptions import NotFoundException
+from src.core.exceptions import ExistsException, InvalidParameterError, NotFoundException
 from src.crud.base import BaseSQLModelCRUD
 from src.models.base import SQLModel
 from src.schemas import BaseRequest, BaseResponse
@@ -23,7 +24,7 @@ from tests.utils import random_lowercase, random_uuid
 
 class PyUser(SQLModel, table=True):
     __tablename__ = "test"
-    name: str
+    name: str = Field(..., unique=True)
 
 
 class PyUserCreate(BaseRequest):
@@ -88,6 +89,22 @@ async def test_create_with_model(crud: CRUD) -> None:
 
 
 @pytest.mark.asyncio
+async def test_create_with_schema_not_validate(crud: CRUD) -> None:
+    name = random_lowercase()
+    with pytest.raises(InvalidParameterError) as exc:
+        await crud.create(PyUserCreate(name=name), validate=False)  # type: ignore
+    assert "Expected type" in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test_create_repeat_creation(crud: CRUD) -> None:
+    name = random_lowercase()
+    await crud.create(PyUser(name=name))
+    with pytest.raises(ExistsException):
+        await crud.create(PyUser(name=name))
+
+
+@pytest.mark.asyncio
 async def test_create_all_schema(crud: CRUD) -> None:
     name = random_lowercase()
     name2 = random_lowercase()
@@ -95,8 +112,9 @@ async def test_create_all_schema(crud: CRUD) -> None:
 
     created = await crud.get_all(col(PyUser.name).in_([name, name2]))
     assert len(created) == 2
-    assert created[0].name == name
-    assert created[1].name == name2
+    names = [item.name for item in created]
+    assert name in names
+    assert name2 in names
 
 
 @pytest.mark.asyncio
@@ -107,8 +125,9 @@ async def test_create_all_dict(crud: CRUD) -> None:
 
     created = await crud.get_all(col(PyUser.name).in_([name, name2]))
     assert len(created) == 2
-    assert created[0].name == name
-    assert created[1].name == name2
+    names = [item.name for item in created]
+    assert name in names
+    assert name2 in names
 
 
 @pytest.mark.asyncio
@@ -119,8 +138,29 @@ async def test_create_all_model(crud: CRUD) -> None:
 
     created = await crud.get_all(col(PyUser.name).in_([name, name2]))
     assert len(created) == 2
-    assert created[0].name == name
-    assert created[1].name == name2
+    names = [item.name for item in created]
+    assert name in names
+    assert name2 in names
+
+
+@pytest.mark.asyncio
+async def test_create_all_empty(crud: CRUD) -> None:
+    with pytest.raises(InvalidParameterError):
+        await crud.create_all([])
+
+
+@pytest.mark.asyncio
+async def test_create_all_repeat(crud: CRUD) -> None:
+    name = random_lowercase()
+    with pytest.raises(ExistsException):
+        await crud.create_all([PyUser(name=name), PyUser(name=name)])
+
+
+@pytest.mark.asyncio
+async def test_crud_session(crud: CRUD) -> None:
+    crud._session = None
+    with pytest.raises(RuntimeError):
+        await crud.get_all()
 
 
 @pytest.mark.asyncio
@@ -207,8 +247,8 @@ async def test_get_by_ids_all_invalid(crud: CRUD) -> None:
 
 @pytest.mark.asyncio
 async def test_get_by_ids_empty_list(crud: CRUD) -> None:
-    result = await crud.get_by_ids([])
-    assert result == []
+    with pytest.raises(InvalidParameterError):
+        await crud.get_by_ids([])
 
 
 @pytest.mark.asyncio
@@ -328,7 +368,7 @@ async def test_update_all_success(crud: CRUD, with_data: list[PyUser]) -> None:
 
 @pytest.mark.asyncio
 async def test_update_all_missing_id_raises(crud: CRUD) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(InvalidParameterError):
         await crud.update_all([{"name": "no_id"}])
 
 
@@ -336,6 +376,18 @@ async def test_update_all_missing_id_raises(crud: CRUD) -> None:
 async def test_update_all_not_found_id_raises(crud: CRUD) -> None:
     with pytest.raises(NotFoundException):
         await crud.update_all([{"name": "test", "id": random_uuid()}])
+
+
+@pytest.mark.asyncio
+async def test_update_all_empty(crud: CRUD) -> None:
+    with pytest.raises(InvalidParameterError):
+        await crud.update_all([])
+
+
+@pytest.mark.asyncio
+async def test_update_all_error(crud: CRUD, with_data: list[PyUser]) -> None:
+    with pytest.raises(SQLAlchemyError):
+        await crud.update_all([{"name1": "test", "id": with_data[0].id}])
 
 
 @pytest.mark.asyncio
@@ -365,3 +417,9 @@ async def test_delete_all_partial_not_found(crud: CRUD, with_data: list[PyUser])
     await crud.delete_all([with_data[0].id, random_uuid()])
     remaining = await crud.get_all()
     assert len(remaining) == 2
+
+
+@pytest.mark.asyncio
+async def test_delete_all_empty(crud: CRUD) -> None:
+    with pytest.raises(InvalidParameterError):
+        await crud.delete_all([])

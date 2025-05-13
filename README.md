@@ -245,12 +245,22 @@ Before running the tests, please ensure you’ve completed the following setup:
 
 3. Run the Tests
    ```bash
-   pytest -s
+    pytest -s
    ```
 
 4. Run your tests with coverage
    ```bash
-   coverage run -m pytest
+    # Run tests and collect coverage data
+    coverage run -m pytest --source=src
+
+    # Display a brief coverage report
+    coverage report
+
+    # Generate an HTML coverage report in htmlcov/index.html
+    coverage html
+
+    # Erase previous coverage data
+    coverage erase
    ```
 
 ---

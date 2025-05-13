@@ -246,7 +246,17 @@ src/
 
 4. 运行覆盖率测试
    ```bash
-   coverage run -m pytest
+   # 运行测试并收集覆盖率数据
+   coverage run -m pytest --source=src
+
+   # 查看简要覆盖率报告
+   coverage report
+
+   # 会在当前目录生成 htmlcov/index.html 文件
+   coverage html
+
+   # 清除历史数据
+   coverage erase
    ```
 
 ---

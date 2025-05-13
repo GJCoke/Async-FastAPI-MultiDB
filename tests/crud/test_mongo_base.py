@@ -11,7 +11,7 @@ from beanie import SortDirection, init_beanie
 from beanie.operators import In
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from src.core.exceptions import NotFoundException
+from src.core.exceptions import InvalidParameterError, NotFoundException
 from src.crud.base import BaseBeanieCRUD
 from src.models.base import Document
 from src.schemas import BaseRequest, BaseResponse
@@ -99,8 +99,15 @@ async def test_create_all_by_model(crud: CRUD) -> None:
     await crud.create_all([PyMongo(name=name), PyMongo(name=name2)])
     created = await crud.get_all(In(PyMongo.name, [name, name2]))
     assert len(created) == 2
-    assert created[0].name == name
-    assert created[1].name == name2
+    names = [item.name for item in created]
+    assert name in names
+    assert name2 in names
+
+
+@pytest.mark.asyncio
+async def test_create_all_by_empty(crud: CRUD) -> None:
+    with pytest.raises(InvalidParameterError):
+        await crud.create_all([])
 
 
 @pytest.mark.asyncio
@@ -110,8 +117,9 @@ async def test_create_all_by_schema(crud: CRUD) -> None:
     await crud.create_all([PyMongoCreate(name=name), PyMongoCreate(name=name2)])
     created = await crud.get_all(In(PyMongo.name, [name, name2]))
     assert len(created) == 2
-    assert created[0].name == name
-    assert created[1].name == name2
+    names = [item.name for item in created]
+    assert name in names
+    assert name2 in names
 
 
 @pytest.mark.asyncio
@@ -121,8 +129,9 @@ async def test_create_all_by_dict(crud: CRUD) -> None:
     await crud.create_all([{"name": name}, {"name": name2}])
     created = await crud.get_all(In(PyMongo.name, [name, name2]))
     assert len(created) == 2
-    assert created[0].name == name
-    assert created[1].name == name2
+    names = [item.name for item in created]
+    assert name in names
+    assert name2 in names
 
 
 @pytest.mark.asyncio
@@ -195,6 +204,12 @@ async def test_get_by_valid_id(crud: CRUD, with_data: list[PyMongo]) -> None:
 
 
 @pytest.mark.asyncio
+async def test_get_by_empty(crud: CRUD, with_data: list[PyMongo]) -> None:
+    with pytest.raises(InvalidParameterError):
+        await crud.get(None, nullable=False)
+
+
+@pytest.mark.asyncio
 async def test_get_by_ids_partial_match(crud: CRUD, with_data: list[PyMongo]) -> None:
     result = await crud.get_by_ids([with_data[0].id, random_object_id()])
     assert len(result) == 1
@@ -209,8 +224,8 @@ async def test_get_by_ids_none_match(crud: CRUD) -> None:
 
 @pytest.mark.asyncio
 async def test_get_by_ids_empty(crud: CRUD) -> None:
-    result = await crud.get_by_ids([])
-    assert result == []
+    with pytest.raises(InvalidParameterError):
+        await crud.get_by_ids([])
 
 
 @pytest.mark.asyncio
@@ -300,6 +315,12 @@ async def test_update_by_id_with_dict(crud: CRUD, with_data: list[PyMongo]) -> N
 
 
 @pytest.mark.asyncio
+async def test_update_by_empty(crud: CRUD, with_data: list[PyMongo]) -> None:
+    with pytest.raises(InvalidParameterError):
+        await crud.update_by_id(None, {"name": "name"})
+
+
+@pytest.mark.asyncio
 async def test_update_by_id_with_schema(crud: CRUD, with_data: list[PyMongo]) -> None:
     name = random_lowercase()
     update = await crud.update_by_id(with_data[0].id, PyMongoUpdate(name=name))
@@ -324,6 +345,12 @@ async def test_update_all_multiple_documents(crud: CRUD, with_data: list[PyMongo
 
 
 @pytest.mark.asyncio
+async def test_update_all_empty(crud: CRUD, with_data: list[PyMongo]) -> None:
+    with pytest.raises(InvalidParameterError):
+        await crud.update_all([])
+
+
+@pytest.mark.asyncio
 async def test_update_all_missing_id_raises_value_error(crud: CRUD) -> None:
     with pytest.raises(ValueError):
         await crud.update_all([{"name": "no_id"}])
@@ -345,6 +372,12 @@ async def test_delete_non_existent_id_raises_not_found(crud: CRUD) -> None:
 
 
 @pytest.mark.asyncio
+async def test_delete_id_empty(crud: CRUD) -> None:
+    with pytest.raises(InvalidParameterError):
+        await crud.delete(None)
+
+
+@pytest.mark.asyncio
 async def test_delete_all_partial_and_full(crud: CRUD, with_data: list[PyMongo]) -> None:
     await crud.delete_all([with_data[0].id, with_data[1].id])
     remaining = await crud.get_all()
@@ -356,3 +389,9 @@ async def test_delete_all_with_non_existent_id(crud: CRUD, with_data: list[PyMon
     await crud.delete_all([with_data[0].id, random_object_id()])
     remaining = await crud.get_all()
     assert len(remaining) == 2
+
+
+@pytest.mark.asyncio
+async def test_delete_all_empty(crud: CRUD) -> None:
+    with pytest.raises(InvalidParameterError):
+        await crud.delete_all([])

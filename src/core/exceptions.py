@@ -104,3 +104,10 @@ class ExistsException(BaseHTTPException):
             detail (str): The error message (default "resource already exists.").
         """
         super().__init__(status_code=status_code, detail=detail)
+
+
+class InvalidParameterError(Exception):
+    def __init__(self, message: str = "Invalid parameter.", param: str = ""):
+        if param:
+            message = f"Parameter '{param}' is required and cannot be empty."
+        super().__init__(message)

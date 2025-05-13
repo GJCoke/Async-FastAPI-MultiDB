@@ -22,7 +22,7 @@ from sqlalchemy.sql import ColumnElement
 from sqlmodel import col, delete, func, select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from src.core.exceptions import ExistsException, NotFoundException
+from src.core.exceptions import ExistsException, InvalidParameterError, NotFoundException
 from src.models.base import Document as _Document
 from src.models.base import SQLModel as _SQLModel
 from src.schemas.base import BaseModel
@@ -200,7 +200,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             list[SQLModel]: A list of retrieved records, or an empty list if none are found.
         """
         if not ids:
-            return []
+            raise InvalidParameterError(param="ids")
 
         session = session or self.session
         statement = select(self.model).filter(col(self.model.id).in_(ids))
@@ -381,7 +381,9 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
         session = session or self.session
         if not validate:
             if not isinstance(create_in, self.model):
-                raise TypeError(f"Expected type {type(self.model)} for 'create_in', but got {type(create_in)}.")
+                raise InvalidParameterError(
+                    f"Expected type {type(self.model)} for 'create_in', but got {type(create_in)}."
+                )
         else:
             create_in = self.model.model_validate(create_in)
 
@@ -424,7 +426,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
                 already exists in the database, the operation will raise an `ExistsException`.
         """
         if not creates_in:
-            return
+            raise InvalidParameterError(param="creates_in")
 
         session = session or self.session
         creates_in = [self.model.model_validate(create_item) for create_item in creates_in]
@@ -517,18 +519,18 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
 
         Raises:
-            ValueError: If any item is missing an 'id'.
+            InvalidParameterError: If any item is missing an 'id'.
             NotFoundException: If no record exists with the specified ID.
         """
         if not updates_in:
-            return
+            raise InvalidParameterError(param="updates_in")
 
         session = session or self.session
         try:
             for index, update_info in enumerate(updates_in):
                 _id = update_info.pop("id", None)
                 if not _id:
-                    raise ValueError(f"[index={index}] Missing 'id' in update payload.")
+                    raise InvalidParameterError(f"[index={index}] Missing 'id' in update payload.")
 
                 statement = update(self.model).where(col(self.model.id) == _id).values(**update_info)
                 result = await session.exec(statement)  # type: ignore
@@ -539,7 +541,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
 
         except SQLAlchemyError as e:
             await session.rollback()
-            raise RuntimeError("Database error during batch update.") from e
+            raise SQLAlchemyError("Database error during batch update.") from e
 
     async def delete(self, _id: UUID, /, *, session: AsyncSession | None = None, auto_commit: bool = False) -> SQLModel:
         """
@@ -581,7 +583,7 @@ class BaseSQLModelCRUD(Generic[SQLModel, CreateSchema, UpdateSchema]):
             auto_commit(bool): Whether to automatically commit the changes. Defaults to False.
         """
         if not ids:
-            return
+            raise InvalidParameterError(param="ids")
 
         session = session or self.session
         statement = delete(self.model).filter(col(self.model.id).in_(ids))
@@ -687,8 +689,8 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
             NotFoundException: If the document is not found and nullable is False.
         """
 
-        if _id is None:
-            raise ValueError("requires a valid document identifier.")
+        if not _id:
+            raise InvalidParameterError(param="_id")
 
         response = await self.model.get(document_id=_id, session=session)
 
@@ -739,7 +741,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
             list[Document]: A list of retrieved documents.
         """
         if not ids:
-            return []
+            raise InvalidParameterError(param="ids")
 
         statement = self.model.find(In(self.model.id, ids), session=session)
         if order_by is not None:
@@ -926,7 +928,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
                 Optional MongoDB session for transactional support. Defaults to None.
         """
         if not creates_in:
-            return
+            raise InvalidParameterError(param="creates_in")
 
         update_models = [
             self.model.model_validate(item if isinstance(item, dict) else item.model_dump()) for item in creates_in
@@ -979,8 +981,8 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         Returns:
             Document: The updated document.
         """
-        if _id is None:
-            raise ValueError("requires a valid document identifier.")
+        if not _id:
+            raise InvalidParameterError(param="_id")
 
         update_model = await self.get(_id, nullable=False)
         return await self.update(update_model, update_in, session=session)
@@ -1008,7 +1010,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
         """
 
         if not updates_in:
-            return
+            raise InvalidParameterError(param="updates_in")
 
         statements = []
         for index, update_info in enumerate(updates_in):
@@ -1039,8 +1041,8 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
             Document: The deleted document.
         """
 
-        if _id is None:
-            raise ValueError("requires a valid document identifier.")
+        if not _id:
+            raise InvalidParameterError(param="_id")
 
         delete_model = await self.get(_id, nullable=False, session=session)
         await delete_model.delete(session=session)  # type: ignore
@@ -1061,7 +1063,7 @@ class BaseBeanieCRUD(Generic[Document, CreateSchema, UpdateSchema]):
             session (AsyncIOMotorClientSession, optional): MongoDB transaction session.
         """
         if not ids:
-            return
+            raise InvalidParameterError(param="ids")
 
         statements = [DeleteOne({"_id": _id}) for _id in ids if _id is not None]
         collection = self.model.get_motor_collection()
