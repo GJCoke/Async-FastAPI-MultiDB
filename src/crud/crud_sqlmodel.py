@@ -1,5 +1,5 @@
 """
-Database create, read, update, delete operations.
+Database(SQLModel) create, read, update, delete operations.
 
 This file contains the base CRUD operations for handling database queries.
 

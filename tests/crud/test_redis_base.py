@@ -1,7 +1,5 @@
 """
-test_redis_base file.
-
-Description.
+Async redis client testcase.
 
 Author : Coke
 Date   : 2025-05-13

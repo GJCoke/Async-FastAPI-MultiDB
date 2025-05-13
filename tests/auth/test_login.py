@@ -1,5 +1,5 @@
 """
-Test login.
+Login testcase.
 
 Author : Coke
 Date   : 2025-05-07

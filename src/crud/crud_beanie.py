@@ -1,7 +1,7 @@
 """
-beanie file.
+Database(Beanie) create, read, update, delete operations.
 
-Description.
+This file contains the base CRUD operations for handling database queries.
 
 Author : Coke
 Date   : 2025-05-13
