@@ -8,7 +8,7 @@ cp env:
 
 # run static check.
 format:
-   docker compose exec app scripts/static-check.sh
+   docker compose exec app scripts/check/lint.sh
 
 # stop docker compose
 stop:
@@ -32,15 +32,15 @@ ps:
 
 # Run Alembic database migrations
 migrate:
-  docker compose exec app scripts/alembic-migrate.sh
+  docker compose exec app scripts/alembic/migrate.sh
 
 # Downgrade the database to a previous version with optional arguments
 downgrade *args:
-  docker compose exec app scripts/alembic-downgrade.sh {{args}}
+  docker compose exec app scripts/alembic/downgrade.sh {{args}}
 
 # Generate new Alembic migration files with optional arguments
 makemigrations *args:
-  docker compose exec app scripts/alembic-makemigrations.sh {{args}}
+  docker compose exec app scripts/alembic/makemigrations.sh {{args}}
 
 # init database.
 initdb:

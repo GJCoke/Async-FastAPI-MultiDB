@@ -44,7 +44,6 @@ This is a production-ready asynchronous backend template built with FastAPI, fea
 
 ### MinIO Integration (Object Storage)
 - Integrated with MinIO, compatible with Amazon S3 API.
-- Seamlessly connects to domestic cloud storage (e.g., Alibaba Cloud, Tencent Cloud).
 - Prebuilt utilities included:
   - Generate pre-signed upload URLs
   - Multipart upload support
@@ -174,8 +173,8 @@ src/
 
 4. Run Alembic to create the database schema.
     ```bash
-    docker compose exec app scripts/alembic-makemigrations.sh "Initialize Database"
-    docker compose exec app scripts/alembic-migrate.sh
+    docker compose exec app scripts/alembic/makemigrations.sh "Initialize Database"
+    docker compose exec app scripts/alembic/migrate.sh
     ```
 
 5. Run the initdb script to generate the necessary initial data.

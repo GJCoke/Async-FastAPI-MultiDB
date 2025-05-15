@@ -170,8 +170,8 @@ src/
 
 4. 运行 Alembic 创建数据库结构
     ```bash
-    docker compose exec app scripts/alembic-makemigrations.sh "Init Database"
-    docker compose exec app scripts/alembic-migrate.sh
+    docker compose exec app scripts/alembic/makemigrations.sh "Init Database"
+    docker compose exec app scripts/alembic/migrate.sh
     ```
 
 5. 运行 initdb 脚本生成初始数据
