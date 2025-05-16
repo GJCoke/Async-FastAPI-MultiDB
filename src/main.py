@@ -24,10 +24,12 @@ from src.core.config import app_configs, settings
 from src.core.lifecycle import lifespan
 from src.schemas.response import Response as SchemaResponse
 from src.schemas.response import ServerErrorResponse, ValidationErrorResponse
+from src.websockets.server import socket_app
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI(**app_configs, lifespan=lifespan)
+app.mount("/socket.io", socket_app)
 
 app.add_middleware(
     CORSMiddleware,  # type: ignore
