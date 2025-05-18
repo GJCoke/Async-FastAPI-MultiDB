@@ -42,24 +42,24 @@ class AsyncServer(SocketIOAsyncServer):
             Callable[[Callable], Callable]: A decorator that wraps the event handler function.
         """
 
-        def decorator(_handler: Callable) -> Callable:
+        def decorator(func: Callable) -> Callable:
             """
             Decorator that wraps the original event handler.
 
             Args:
-                _handler (Callable): The original handler function.
+                func (Callable): The original handler function.
 
             Returns:
                 Callable: The wrapped handler or the original if no validation is required.
             """
-            sig = signature(_handler)
+            sig = signature(func)
             params = list(sig.parameters.values())
 
             if len(params) < 2:
-                return super(AsyncServer, self).on(event=event, handler=handler, namespace=namespace)(_handler)
+                return super(AsyncServer, self).on(event=event, handler=handler, namespace=namespace)(func)
 
             data_param = params[1]
-            annotations = get_type_hints(_handler)
+            annotations = get_type_hints(func)
             model_cls = annotations.get(data_param.name)
 
             if model_cls is not None and isclass(model_cls) and isinstance(model_cls, ModelMetaclass):
@@ -79,13 +79,24 @@ class AsyncServer(SocketIOAsyncServer):
                     """
                     try:
                         parsed_data = model_cls(**data)
-                        return await _handler(sid, parsed_data, *args, **kwargs)
+                        return await func(sid, parsed_data, *args, **kwargs)
                     except ValidationError as e:
-                        await self.emit("error", {"status": 422, "errors": e.errors()}, to=sid)
+                        await self.emit("error", {"status": 422, "event": event, "errors": e.errors()}, to=sid)
+
+                    except TypeError:
+                        await self.emit(
+                            "error",
+                            {
+                                "status": 422,
+                                "event": event,
+                                "errors": f"TypeError: expected a 'map', but received an '{type(data).__name__}'.",
+                            },
+                            to=sid,
+                        )
 
                 return super(AsyncServer, self).on(event=event, handler=handler, namespace=namespace)(wrapper)
 
-            return super(AsyncServer, self).on(event=event, handler=handler, namespace=namespace)(_handler)
+            return super(AsyncServer, self).on(event=event, handler=handler, namespace=namespace)(func)
 
         return decorator if handler is None else decorator(handler)
 

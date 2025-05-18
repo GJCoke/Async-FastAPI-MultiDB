@@ -3,8 +3,7 @@ Author  : Coke
 Date    : 2025-05-16
 """
 
-from pydantic import BaseModel
-
+from src.schemas import BaseModel
 from src.websockets.server import socket
 
 
