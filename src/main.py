@@ -24,7 +24,8 @@ from src.core.config import app_configs, settings
 from src.core.lifecycle import lifespan
 from src.schemas.response import Response as SchemaResponse
 from src.schemas.response import ServerErrorResponse, ValidationErrorResponse
-from src.websockets.server import socket_app
+from src.utils.utils import format_validation_errors
+from src.websockets.app import socket_app
 
 logger = logging.getLogger(__name__)
 
@@ -104,10 +105,7 @@ async def handle_server_errors(request: Request, exc: Exception) -> JSONResponse
 async def handle_request_validation_errors(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Capture parameter exception errors and process their structure."""
 
-    errors = [
-        f"{item.get('loc', [..., 'unknown'])[-1]} {str(item.get('msg', 'error.')).lower()}" for item in exc.errors()
-    ]
-    details = "; ".join(errors)
+    details = format_validation_errors(exc)
     logger.warning(
         '"%s %s" RequestValidationError: %s',
         request.method,

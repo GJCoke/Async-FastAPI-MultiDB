@@ -4,7 +4,7 @@ Date    : 2025-05-16
 """
 
 from src.schemas import BaseModel
-from src.websockets.server import socket
+from src.websockets.app import socket
 
 
 class User(BaseModel):

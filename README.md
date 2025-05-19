@@ -4,70 +4,114 @@
   <span>English | <a href="./README-CN.md">中文</a></span>
 </div>
 
-This is a production-ready asynchronous backend template built with FastAPI, featuring integrated support for Celery, JWT authentication, RBAC permissions, and MinIO object storage. It supports both MongoDB and PostgreSQL, making it a powerful and flexible choice for modern backend development.
+## Introduction
+
+This project is built on a modern and cutting-edge technology stack with a clear layered architecture design, aiming to deliver a high-performance, scalable, and secure backend solution. By strictly adhering to the Google Python Style Guide, integrating type checking, and automated testing, it ensures code quality and stability.
+
+The project supports multiple databases (both relational and NoSQL) and fully embraces asynchronous programming to enhance response efficiency. Leveraging FastAPI’s powerful automatic API documentation features facilitates development and maintenance. On the security front, it employs JWT + RSA authentication combined with RBAC-based fine-grained access control and Redis caching for efficient permission verification.
+
+Additionally, comprehensive environment configuration management, multi-environment support, and detailed code annotations greatly improve development and operational experience. This project is well-suited for building modern distributed systems and microservice architectures.
+
+Core technologies include FastAPI, Socket.IO, Celery, MinIO, SQLModel, Beanie, among others, to meet diverse business needs.
 
 ---
 
 ## Table of Contents
 
-- [Project Features](#project-features)
+- [Project Features](#features)
 - [Quick Start](#quick-start)
 - [Architecture Overview](#Async-FastAPI-MultiDB-Project-Architecture-Overview)
 - [Project Structure](#Directory-Structure-Description)
-- [Celery Task Enhancements](#celery)
 - [Authentication & Authorization](#Auth-Module-Overview)
+- [Celery Async Task](#celery)
 - [Testing Guide](#Running-Tests-with-Pytest)
 - [License](#license)
 
-## Project Features
+## Features
 
-### Asynchronous Architecture
-- Fully supports `async/await` for high-concurrency performance and responsiveness.
-- Ideal for building high-throughput API services.
+- **Cutting-edge Technology Stack**: Utilizes modern and efficient technologies such as FastAPI, Socket.IO, Celery, MinIO, SQLModel, and Beanie to build a state-of-the-art backend solution.
 
-### SQL & NoSQL Integration
-- Supports both:
-  - **SQLModel / SQLAlchemy**: for relational databases like MySQL and PostgreSQL.
-  - **Beanie**: asynchronous ODM for MongoDB, suitable for document-oriented storage.
-- Flexible combination enables support for complex, hybrid data needs.
+- **Clear Project Architecture**: Based on a Layered Architecture, with well-defined responsibilities and clear separation of concerns, enhancing maintainability and scalability.
 
-### Modular Design
-- Clean separation of routers, models, services, and database logic.
-- Highly cohesive and loosely coupled, suitable for large-scale projects and team collaboration.
+- **Strict Code Standards**: Fully adheres to the Google Python Style Guide and integrates tools like ruff, mypy, and pre-commit to ensure consistent coding style and type safety.
 
-### Automatic API Documentation
-- Built-in FastAPI interactive documentation via Swagger and Redoc.
+- **Automated API Documentation**: Leverages FastAPI's built-in features to automatically generate interactive API docs, supporting Swagger UI and Redoc for easy development and testing.
 
-### Environment-Based Configuration
-- Supports environment switching with `.env` files.
-- Manages settings securely and flexibly using `pydantic-settings`.
+- **Comprehensive Authentication and Authorization System**: Implements secure authentication using JWT combined with RSA, with fine-grained role-based access control (RBAC) and Redis-backed permission caching for high-performance validation.
 
-### MinIO Integration (Object Storage)
-- Integrated with MinIO, compatible with Amazon S3 API.
-- Prebuilt utilities included:
-  - Generate pre-signed upload URLs
-  - Multipart upload support
-  - Generate secure download URLs
-  - Manage bucket metadata
-- Recommended to use the official Python SDK for better performance and ease of use (instead of `boto3`).
-- For implementation, refer to `src/utils/minio_client.py`.
+- **Detailed Code Comments and Type Annotations**: Core modules are thoroughly documented with clear comments and strict typing, improving code readability and team collaboration.
 
-### Celery Task Enhancements ([Details](#celery))
-- Dynamic scheduling from database (like `django-celery-beat`, but framework-agnostic).
-- Native support for `async def` tasks with automatic adaptation.
-- Better IDE type hints for a smoother development experience.
+- **Environment Configuration Management**: Supports multi-environment configuration via `.env` files for flexible management of development, testing, and production settings.
 
-### Authentication & Authorization ([Details](#Auth-Module-Overview))
-- **Authentication**:
-  - Supports both Access Token and Refresh Token.
-  - Passwords are encrypted using **RSA** during transmission.
-- **Authorization**:
-  - Route-based **RBAC (Role-Based Access Control)** system.
-  - Redis-based caching for high-performance permission checks.
-- **Developer Experience**:
-  - Uses FastAPI's dependency injection with type hints for clean and extensible security logic.
+- **Multi-database Support**: Seamlessly supports SQLModel (based on SQLAlchemy), SQLAlchemy, and Beanie (MongoDB ODM), catering to diverse data storage needs.
+
+- **High-performance Asynchronous Architecture**: Fully embraces `async/await` asynchronous programming patterns to enhance system throughput and responsiveness.
+
+- **Comprehensive Testing Framework**: Integrates Pytest with full test coverage to ensure system stability and reliability.
+
 
 > 🚧 This project is under active development. Feel free to follow, star the repo, or contribute via issues and PRs.
+
+---
+
+## Quick Start
+1. Clone the repository:
+    ```bash
+    git clone https://github.com/GJCoke/Async-FastAPI-MultiDB.git
+    cd Async-FastAPI-MultiDB
+    ```
+
+2. Copy the environment variables:
+    ```bash
+    cp .env.example .env
+    ```
+
+3. Run with Docker:
+    ```bash
+    docker network create app_network
+    docker compose up -d --build
+    ```
+
+4. Run Alembic to create the database schema.
+    ```bash
+    docker compose exec app scripts/alembic/makemigrations.sh "Initialize Database"
+    docker compose exec app scripts/alembic/migrate.sh
+    ```
+
+5. Run the initdb script to generate the necessary initial data.
+    ```bash
+    docker compose exec app scripts/initdb.sh
+    ```
+
+6. Default Username and Password
+
+    After initialization, a default user will be created with the following credentials:
+    - **Username**：`admin`
+    - **Password**：`123456`
+
+    > These credentials can be used to access the system or for debugging authentication-related endpoints.
+    >
+    > ⚠️ Please make sure to change the default password promptly in production environments!
+
+7. Development workflow:
+    This project uses `pre-commit` to enforce code quality and consistency:
+    ```bash
+    pre-commit install
+    ```
+
+    > The `.pre-commit-config.yaml` includes:
+    > - Large file check: Whether large files have been added to the committed code.
+    > - Auto formatting via `ruff`
+    > - Static type checking with `mypy`
+
+> Access the Swagger UI at: [http://localhost:16000/docs](http://localhost:16000/docs)
+
+#### Example 1
+![swagger-1](docs/images/swagger-1.png)
+#### Example 2
+> Error responses are globally enhanced—no need to define them on each route individually.
+
+![swagger-2](docs/images/swagger-2.png)
 
 ---
 
@@ -150,117 +194,6 @@ src/
 ├── main.py               # FastAPI application entry point
 
 ```
-
----
-
-## Quick Start
-1. Clone the repository:
-    ```bash
-    git clone https://github.com/GJCoke/Async-FastAPI-MultiDB.git
-    cd Async-FastAPI-MultiDB
-    ```
-
-2. Copy the environment variables:
-    ```bash
-    cp .env.example .env
-    ```
-
-3. Run with Docker:
-    ```bash
-    docker network create app_network
-    docker compose up -d --build
-    ```
-
-4. Run Alembic to create the database schema.
-    ```bash
-    docker compose exec app scripts/alembic/makemigrations.sh "Initialize Database"
-    docker compose exec app scripts/alembic/migrate.sh
-    ```
-
-5. Run the initdb script to generate the necessary initial data.
-    ```bash
-    docker compose exec app scripts/initdb.sh
-    ```
-
-6. Default Username and Password
-
-    After initialization, a default user will be created with the following credentials:
-    - **Username**：`admin`
-    - **Password**：`123456`
-
-    > These credentials can be used to access the system or for debugging authentication-related endpoints.
-    >
-    > ⚠️ Please make sure to change the default password promptly in production environments!
-
-7. Development workflow:
-    This project uses `pre-commit` to enforce code quality and consistency:
-    ```bash
-    pre-commit install
-    ```
-
-    > The `.pre-commit-config.yaml` includes:
-    > - Large file check: Whether large files have been added to the committed code.
-    > - Auto formatting via `ruff`
-    > - Static type checking with `mypy`
-
-> Access the Swagger UI at: [http://localhost:16000/docs](http://localhost:16000/docs)
-
-#### Example 1
-![swagger-1](docs/images/swagger-1.png)
-#### Example 2
-> Error responses are globally enhanced—no need to define them on each route individually.
-
-![swagger-2](docs/images/swagger-2.png)
-
----
-
-## Running Tests (with Pytest)
-Before running the tests, please ensure you’ve completed the following setup:
-
-1. Copy Environment Configuration：
-    ```bash
-    cp .env.pytest.example .env.pytest
-    ```
-
-2. Configure Database Connections
-
-   > You can either manually configure .env.pytest, or simply start the pre-configured test database containers using Docker.
-
-   **Option A: Start test databases with Docker**
-   ```bash
-    docker compose -f docker-compose-pytest.yml up -d --build
-   ```
-   **Option B: Manually configure .env.pytest**
-   ```dotenv
-    # MongoDB (required)
-    MONGO_DATABASE_URL=mongodb://localhost:27017
-
-    # Redis (required)
-    REDIS_DATABASE_URL=redis://localhost:6379
-
-    # SQLite (default relational database, optional)
-    SQL_DATABASE_URL=sqlite+aiosqlite://
-   ```
-
-3. Run the Tests
-   ```bash
-    pytest -s
-   ```
-
-4. Run your tests with coverage
-   ```bash
-    # Run tests and collect coverage data
-    coverage run -m --source=src pytest -s tests/
-
-    # Display a brief coverage report
-    coverage report
-
-    # Generate an HTML coverage report in htmlcov/index.html
-    coverage html
-
-    # Erase previous coverage data
-    coverage erase
-   ```
 
 ---
 
@@ -397,6 +330,56 @@ Enhances native Celery with improved type hinting and IDE integration:
 ![celery-type-3](docs/images/celery-type-3.png)
 
 > For more details, please refer to the source code in the `src.queues` directory, including task registration, scheduler implementation, and async task execution logic.
+
+---
+
+## Running Tests (with Pytest)
+Before running the tests, please ensure you’ve completed the following setup:
+
+1. Copy Environment Configuration：
+    ```bash
+    cp .env.pytest.example .env.pytest
+    ```
+
+2. Configure Database Connections
+
+   > You can either manually configure .env.pytest, or simply start the pre-configured test database containers using Docker.
+
+   **Option A: Start test databases with Docker**
+   ```bash
+    docker compose -f docker-compose-pytest.yml up -d --build
+   ```
+   **Option B: Manually configure .env.pytest**
+   ```dotenv
+    # MongoDB (required)
+    MONGO_DATABASE_URL=mongodb://localhost:27017
+
+    # Redis (required)
+    REDIS_DATABASE_URL=redis://localhost:6379
+
+    # SQLite (default relational database, optional)
+    SQL_DATABASE_URL=sqlite+aiosqlite://
+   ```
+
+3. Run the Tests
+   ```bash
+    pytest -s
+   ```
+
+4. Run your tests with coverage
+   ```bash
+    # Run tests and collect coverage data
+    coverage run -m --source=src pytest -s tests/
+
+    # Display a brief coverage report
+    coverage report
+
+    # Generate an HTML coverage report in htmlcov/index.html
+    coverage html
+
+    # Erase previous coverage data
+    coverage erase
+   ```
 
 ---
 
