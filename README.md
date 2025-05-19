@@ -105,13 +105,10 @@ Core technologies include FastAPI, Socket.IO, Celery, MinIO, SQLModel, Beanie, a
     > - Static type checking with `mypy`
 
 > Access the Swagger UI at: [http://localhost:16000/docs](http://localhost:16000/docs)
-
-#### Example 1
-![swagger-1](docs/images/swagger-1.png)
-#### Example 2
+>
 > Error responses are globally enhanced—no need to define them on each route individually.
 
-![swagger-2](docs/images/swagger-2.png)
+![swagger-1](docs/images/swagger-1.png)
 
 ---
 
@@ -187,8 +184,11 @@ src/
 │   ├── uuid7.py          # Custom UUID utilities
 │   └── validate.py       # Field/form validation utilities
 │
-├── websockets/           # WebSocket router and handlers
+├── websockets/           # WebSocket routes and logic
 │   ├── __init__.py
+│   ├── events/           # WebSocket events (connect, disconnect, join room, etc.)
+│   ├── server.py         # Socket.IO wrapper with added Pydantic integration
+│   ├── app.py            # WebSocket application entry point
 │
 ├── initdb.py             # Database initialization script (e.g., table creation, insert default data)
 ├── main.py               # FastAPI application entry point
