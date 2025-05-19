@@ -20,11 +20,11 @@ Core technologies include FastAPI, Socket.IO, Celery, MinIO, SQLModel, Beanie, a
 
 - [Project Features](#features)
 - [Quick Start](#quick-start)
-- [Architecture Overview](#Async-FastAPI-MultiDB-Project-Architecture-Overview)
-- [Project Structure](#Directory-Structure-Description)
+- [Architecture](#architecture)
+- [Structure](#Structure-Description)
 - [Authentication & Authorization](#Auth-Module-Overview)
 - [Celery Async Task](#celery)
-- [Testing Guide](#Running-Tests-with-Pytest)
+- [Test](#Running-Tests-with-Pytest)
 - [License](#license)
 
 ## Features
@@ -115,14 +115,14 @@ Core technologies include FastAPI, Socket.IO, Celery, MinIO, SQLModel, Beanie, a
 
 ---
 
-## Async-FastAPI-MultiDB Project Architecture Overview
+## Architecture
 <div align="center">
   <img src="./docs/images/architecture.svg" alt="FastAPI">
 </div>
 
 This document provides a basic architectural overview of a FastAPI project, aiming to help developers understand the project's organization and the functionality of each module. Through a detailed analysis of the project structure, readers can quickly grasp how to build and maintain an efficient FastAPI application.
 
-## Directory Structure Description
+## Structure Description
 ```
 src/
 │

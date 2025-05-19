@@ -19,11 +19,11 @@
 
 - [项目特性](#特性)
 - [快速开始](#快速开始)
-- [项目架构概览](#Async-FastAPI-MultiDB-项目架构概览)
-- [项目结构](#目录结构说明)
+- [项目架构](#项目架构)
+- [项目结构](#项目结构)
 - [Auth 模块说明](#Auth-模块说明)
-- [ Celery 异步任务](#Celery)
-- [测试说明](#运行测试使用-Pytest)
+- [Celery 异步任务](#Celery)
+- [测试](#运行测试使用-Pytest)
 - [License](#许可证)
 
 ## 特性
@@ -111,14 +111,14 @@
 
 ---
 
-## Async-FastAPI-MultiDB 项目架构概览
+## 项目架构
 <div align="center">
   <img src="./docs/images/architecture-cn.svg" alt="FastAPI">
 </div>
 
 本文档提供了一个 FastAPI 项目的基本架构概览，旨在帮助开发者理解项目的组织结构及各个模块的功能。通过对项目目录的详细解析，读者可以快速掌握如何构建和维护一个高效的 FastAPI 应用。
 
-## 目录结构说明
+## 项目结构
 ```
 src/
 │
