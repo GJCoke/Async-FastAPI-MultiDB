@@ -165,6 +165,15 @@ class ServerErrorResponse(Response):
     data: str = "Internal Server Error details."
 
 
+class WSErrorResponse(Response):
+    """Unified websocket server error response."""
+
+    code: int = status.WS_1011_INTERNAL_ERROR
+    message: str = "Internal Server Error."
+    event: str
+    data: str = "Internal Server Error details."
+
+
 RESPONSES = {
     400: {"description": "Bad Request.", "model": BadRequestResponse},
     401: {"description": "Unauthorized.", "model": AuthenticationError},
