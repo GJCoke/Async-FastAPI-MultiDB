@@ -19,11 +19,11 @@
 
 - [项目特性](#特性)
 - [快速开始](#快速开始)
-- [项目架构概览](#Async-FastAPI-MultiDB-项目架构概览)
-- [项目结构](#目录结构说明)
+- [项目架构](#项目架构)
+- [项目结构](#项目结构)
 - [Auth 模块说明](#Auth-模块说明)
-- [ Celery 异步任务](#Celery)
-- [测试说明](#运行测试使用-Pytest)
+- [Celery 异步任务](#Celery)
+- [测试](#运行测试使用-Pytest)
 - [License](#许可证)
 
 ## 特性
@@ -102,23 +102,21 @@
    > - 静态代码检查：使用 mypy 进行静态代码检查。
 
 > 访问 [http://localhost:16000/docs](http://localhost:16000/docs) 即可查看 Swagger 文档
-
-### 示例1
-![swagger-1](docs/images/swagger-1.png)
-### 示例2
+>
 > 错误响应已统一增强处理，无需在每个路由中单独添加错误响应。
-![swagger-2](docs/images/swagger-2.png)
+
+![swagger-1](docs/images/swagger-1.png)
 
 ---
 
-## Async-FastAPI-MultiDB 项目架构概览
+## 项目架构
 <div align="center">
   <img src="./docs/images/architecture-cn.svg" alt="FastAPI">
 </div>
 
 本文档提供了一个 FastAPI 项目的基本架构概览，旨在帮助开发者理解项目的组织结构及各个模块的功能。通过对项目目录的详细解析，读者可以快速掌握如何构建和维护一个高效的 FastAPI 应用。
 
-## 目录结构说明
+## 项目结构
 ```
 src/
 │
@@ -185,6 +183,9 @@ src/
 │
 ├── websockets/           # WebSocket 路由和逻辑
 │   ├── __init__.py
+│   ├── events/           # Websocket 事件(连接、断开、加入房间等)
+│   ├── server.py         # 基于 Socket.IO 进行二次封装, 增加 Pydantic 处理
+│   ├── app.py            # WebSocket 应用入口
 │
 ├── initdb.py             # 数据库初始化脚本（如建表、插入默认数据）
 ├── main.py               # FastAPI 应用主入口
