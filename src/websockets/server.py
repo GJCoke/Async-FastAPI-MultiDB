@@ -11,7 +11,7 @@ from pydantic import BaseModel, ValidationError
 from pydantic._internal._model_construction import ModelMetaclass
 from socketio import AsyncServer as SocketIOAsyncServer
 
-from src.schemas.response import WSErrorResponse
+from src.schemas.response import SocketErrorResponse
 from src.utils.utils import format_validation_errors
 
 T = TypeVar("T")
@@ -86,7 +86,7 @@ class AsyncServer(SocketIOAsyncServer):
                         details = format_validation_errors(e)
                         await self.emit(
                             "error",
-                            WSErrorResponse(
+                            SocketErrorResponse(
                                 code=status.WS_1007_INVALID_FRAME_PAYLOAD_DATA,
                                 event=event,
                                 message="Data Validation Error.",
@@ -98,7 +98,7 @@ class AsyncServer(SocketIOAsyncServer):
                     except TypeError:
                         await self.emit(
                             "error",
-                            WSErrorResponse(
+                            SocketErrorResponse(
                                 code=status.WS_1003_UNSUPPORTED_DATA,
                                 event=event,
                                 message="Data Type Error.",
