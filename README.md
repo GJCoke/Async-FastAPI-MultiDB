@@ -23,6 +23,7 @@ Core technologies include FastAPI, Socket.IO, Celery, MinIO, SQLModel, Beanie, a
 - [Architecture](#architecture)
 - [Structure](#Structure-Description)
 - [Authentication & Authorization](#Auth-Module-Overview)
+- [Websocket](#Websocket-SocketIO-Server-Wrapper-with-Dependency-Injection)
 - [Celery Async Task](#celery)
 - [Test](#Running-Tests-with-Pytest)
 - [License](#license)
@@ -265,6 +266,81 @@ During login, the frontend encrypts the password using the RSA public key provid
 
 > All dependencies and logic are injected via type annotations and FastAPI’s dependency system, making them easy to reuse and extend.
 
+---
+
+## Websocket Socket.IO Server Wrapper with Dependency Injection
+This module wraps socketio.AsyncServer, introducing a FastAPI-style dependency injection system. It automatically handles lifecycle management, parameter injection, validation error responses, and the injection of special parameters (such as SID and environ).
+
+Compared to traditional event handling, you no longer need to manually extract data from args or manage dependency initialization and cleanup logic, significantly improving development efficiency and code readability.
+
+### Features
+- FastAPI-style dependency injection (supports Depends()) and is compatible with fastapi.Depends
+- Supports asynchronous dependencies and generator dependencies (yield)
+- Automatic lifecycle management with teardown registration
+- Pydantic-based parameter validation with error messages returned via error events
+- Injects special parameters like SID (session identifier) and environ (Socket.IO request context)
+- Automatically parses incoming data into Pydantic models
+
+### Example
+```python
+from pydantic import BaseModel
+from src.websockets.server import AsyncServer
+from src.websockets.params import Depends, SID
+
+sio = AsyncServer()
+
+
+# Define a Pydantic request model
+class ChatMessage(BaseModel):
+    text: str
+    room: str
+
+
+# Define a dependency (supports async/generator/sync)
+async def get_current_user(sid: SID) -> str:
+    return f"user_{sid[-4:]}"  # Simulate fetching user info from SID
+
+
+# Register event with injected dependencies
+@sio.on("chat.send")
+async def handle_chat(message: ChatMessage, user: str = Depends(get_current_user)):
+    print(f"[{user}] sends message to {message.room}: {message.text}")
+    await sio.emit("chat.receive", {"user": user, "text": message.text}, room=message.room)
+```
+
+### Automatic Error Handling
+The following errors are automatically handled and returned to the client via an error event:
+
+- Parameter validation errors (via Pydantic)
+- Type errors (e.g., non-dict input for events)
+
+Error response format:
+```json
+{
+  "code": 1007,
+  "event": "chat.send",
+  "message": "Data Validation Error.",
+  "data": "xx field required"
+}
+```
+
+Special Parameter Injection：
+
+| Parameter  | Description                     |
+|------------|---------------------------------|
+| `SID`      | 	Current connection SID         |
+| `Environ	` | Request context (e.g., headers) |
+```python
+from src.websockets.params import SID, Environ
+
+
+@sio.event
+async def connect(sid: SID, environ: Environ):
+    print(f"SID: {sid}, UA: {environ['HTTP_USER_AGENT']}")
+```
+> environ is only available during the "connect" event.
+>
+> This behavior aligns with the Socket.IO design: environ contains HTTP handshake data, which is only passed during connect(sid, environ) and cannot be accessed in later events. To use environ in other events, you must cache it manually during connection.
 ---
 
 ## Celery

@@ -3,6 +3,7 @@ Author  : Coke
 Date    : 2025-05-16
 """
 
+import asyncio
 from typing import Any, Awaitable, Callable, TypeVar, overload
 
 from fastapi import status
@@ -170,12 +171,77 @@ class AsyncServer(SocketIOAsyncServer):
             serializer=serializer,
         )
 
-    @overload
+    async def _trigger_event(self, event: str, namespace: str, *args: Any) -> Awaitable[None] | None:
+        """
+        Trigger an application-level event handler.
+
+        This method attempts to locate and invoke a registered event handler
+        (either a specific event handler or a namespace-level handler).
+        It supports both coroutine and regular function handlers.
+
+        Args:
+            event (str): The name of the event to trigger (e.g., "connect").
+            namespace (str): The namespace associated with the event.
+            *args (Any): Positional arguments to pass to the event handler.
+                For "connect" events, the expected order is (sid, environ, data).
+
+        Returns:
+            Awaitable[None] | None: The return value from the event handler,
+            or `self.not_handled` if no handler was found.
+        """
+        handler, args = self._get_event_handler(event, namespace, args)
+        if handler:
+            try:
+                if asyncio.iscoroutinefunction(handler):
+                    ret = await self._call_handler(handler, event, args)
+                else:
+                    ret = self._call_handler(handler, event, args)
+            except asyncio.CancelledError:
+                ret = None
+            return ret
+
+        handler, args = self._get_namespace_handler(namespace, args)
+        if handler:
+            return await handler.trigger_event(event, *args)
+
+        else:
+            return self.not_handled
+
     @staticmethod
+    def _call_handler(handler: Callable, event: str, args: tuple) -> Any:
+        """
+        Call the given event handler with appropriate arguments.
+
+        For "connect" events, this method injects the `environ` argument
+        as a keyword parameter, while preserving `sid` and `data` as positional arguments.
+        For "disconnect", it removes the last argument for backward compatibility.
+
+        Args:
+            handler (Callable): The function or coroutine to call.
+            event (str): The name of the event ("connect", "disconnect", etc.).
+            args (tuple): The arguments to pass to the handler.
+
+        Returns:
+            Any: The return value from the handler.
+        """
+        if event == "connect":
+            if len(args) == 3:
+                return handler(args[0], args[2], environ=args[1])
+            elif len(args) == 2:
+                return handler(args[0], environ=args[1])
+            else:
+                return handler(*args)
+        elif event == "disconnect":
+            return handler(*args[:-1])
+        else:
+            return handler(*args)
+
+    @staticmethod
+    @overload
     def _pydantic_model_to_dict(data: BaseModel, serializer: str = "serializable_dict") -> dict: ...
 
-    @overload
     @staticmethod
+    @overload
     def _pydantic_model_to_dict(data: T, serializer: str = "serializable_dict") -> T: ...
 
     @staticmethod

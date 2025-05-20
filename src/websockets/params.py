@@ -27,9 +27,11 @@ class Environ:
     Used as a type annotation to signal that the parameter
     should be resolved from the socket environment/context.
 
+    Only takes effect during the 'connect' event.
+
     Examples:
-        @sio.on("message")
-        async def message(environ: Environ):
+        @sio.on("connect")
+        async def connect(environ: Environ):
             print(environ)
     """
 

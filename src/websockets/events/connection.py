@@ -14,8 +14,8 @@ class User(BaseModel):
 
 
 @socket.event
-async def connect(sid: SID, environ: Environ) -> None:
-    print(sid, environ)
+async def connect(sid: SID, environ: Environ, data: dict) -> None:
+    print(sid, data, environ, "connect")
 
 
 @socket.on("test")
@@ -26,4 +26,5 @@ async def test(sid: SID, data1: User, redis: RedisDep) -> None:
 
 @socket.event
 async def disconnect(sid: str) -> None:
-    print(sid, "disconnected")
+    # print(sid, "disconnected")
+    pass
