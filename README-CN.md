@@ -22,6 +22,7 @@
 - [项目架构](#项目架构)
 - [项目结构](#项目结构)
 - [Auth 模块说明](#Auth-模块说明)
+- [Websocket](#Websocket-带依赖注入的-SocketIO-服务端封装)
 - [Celery 异步任务](#Celery)
 - [测试](#运行测试使用-Pytest)
 - [License](#许可证)
@@ -260,6 +261,82 @@ src/
 > 可扩展如：添加 IP 地址校验、添加设备 ID / 平台标识、限制刷新来源、控制多端登录策略
 
 > 所有依赖和逻辑均通过类型注解与 FastAPI 自动注入实现，便于复用与扩展。
+
+---
+
+## Websocket 带依赖注入的 Socket.IO 服务端封装
+此模块封装了 socketio.AsyncServer，引入了类似 FastAPI 的依赖注入系统，并自动处理生命周期管理、参数注入、验证错误响应、特殊参数（如 SID 和 environ）注入等。
+
+相比传统的事件处理方式，你无需手动从 args 中解析数据，也不需要关心依赖初始化和清理逻辑，极大提升开发效率和代码可读性。
+
+### 特性
+- 类似 FastAPI 的依赖注入（支持 Depends()）同时兼容 Fastapi Depends
+- 支持异步依赖、生成器依赖（带 yield 的依赖）
+- 支持生命周期管理，自动注册 teardown 清理函数
+- 支持 Pydantic 参数校验，错误信息将以 error 事件返回
+- 注入特殊参数如：SID（连接标识符）、environ（SocketIO 请求上下文）
+- 支持数据自动转换为 Pydantic 模型
+
+### 使用示例
+```python
+from pydantic import BaseModel
+from src.websockets.server import AsyncServer
+from src.websockets.params import Depends, SID
+
+sio = AsyncServer()
+
+
+# 定义一个 Pydantic 请求体模型
+class ChatMessage(BaseModel):
+    text: str
+    room: str
+
+
+# 定义依赖项（支持 async/generator/sync）
+async def get_current_user(sid: SID) -> str:
+    return f"user_{sid[-4:]}"  # 假设根据 SID 获取用户信息
+
+
+# 注册事件并注入依赖
+@sio.on("chat.send")
+async def handle_chat(message: ChatMessage, user: str = Depends(get_current_user)):
+    print(f"[{user}] 发送消息到 {message.room}：{message.text}")
+    await sio.emit("chat.receive", {"user": user, "text": message.text}, room=message.room)
+```
+
+### 错误处理自动化
+以下错误将自动处理并以 error 事件返回客户端：
+
+- 参数校验失败（Pydantic 校验）
+- 参数类型错误（如传入非字典结构）
+
+返回格式如下：
+```json
+{
+  "code": 1007,
+  "event": "chat.send",
+  "message": "Data Validation Error.",
+  "data": "xx field required"
+}
+```
+
+特殊参数注入：
+
+| 名称         | 说明               |
+|------------|------------------|
+| `SID`      | 	当前连接的 sid       |
+| `Environ	` | 请求上下文（如 headers） |
+```python
+from src.websockets.params import SID, Environ
+
+
+@sio.event
+async def connect(sid: SID, environ: Environ):
+    print(f"SID: {sid}, UA: {environ['HTTP_USER_AGENT']}")
+```
+> environ 只在 "connect" 事件中才存在，之后事件中无法再通过参数直接获取。
+>
+> 这是符合 Socket.IO 的实现逻辑的：environ 是 HTTP 握手阶段的数据，只有在 connect(sid, environ) 时才可获得，后续事件中只能通过 sid 间接获取上下文信息。
 
 ---
 

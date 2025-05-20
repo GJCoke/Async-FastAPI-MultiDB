@@ -165,7 +165,7 @@ class ServerErrorResponse(Response):
     data: str = "Internal Server Error details."
 
 
-class WSErrorResponse(Response):
+class SocketErrorResponse(Response):
     """Unified websocket server error response."""
 
     code: int = status.WS_1011_INTERNAL_ERROR

@@ -3,16 +3,16 @@ Author  : Coke
 Date    : 2025-05-16
 """
 
-from inspect import isclass, signature
-from typing import Any, Awaitable, Callable, TypeVar, get_type_hints, overload
+import asyncio
+from typing import Any, Awaitable, Callable, TypeVar, overload
 
 from fastapi import status
 from pydantic import BaseModel, ValidationError
-from pydantic._internal._model_construction import ModelMetaclass
 from socketio import AsyncServer as SocketIOAsyncServer
 
-from src.schemas.response import WSErrorResponse
+from src.schemas.response import SocketErrorResponse
 from src.utils.utils import format_validation_errors
+from src.websockets.dependencies.core import LifespanContext, solve_dependency
 
 T = TypeVar("T")
 
@@ -25,91 +25,67 @@ class AsyncServer(SocketIOAsyncServer):
             cors_allowed_origins = "*"
         super().__init__(cors_allowed_origins=cors_allowed_origins, **kwargs)
 
-    def on(
-        self,
-        event: str,
-        handler: Callable | None = None,
-        namespace: str | None = None,
-    ) -> Callable[[Callable], Callable]:
+    def on(self, event: str, handler: Callable | None = None, namespace: str | None = None) -> Callable:
         """
-        Registers an event listener with optional automatic Pydantic validation.
+        Decorator for registering an event handler with dependency injection support.
+
+        This method wraps the provided handler function and automatically resolves its
+        dependencies using a custom dependency system. It supports context teardown,
+        validation error handling, and emits error messages back to the client if needed.
 
         Args:
-            event (str): The name of the event to listen for.
-            handler (Optional[Callable], optional): The event handler function.
-            namespace (Optional[str], optional): The namespace for the event.
+            event (str): The event name to bind the handler to.
+            handler (Callable | None, optional): The event handler function. If None, the decorator is returned.
+            namespace (str | None, optional): An optional namespace for the event.
 
         Returns:
-            Callable[[Callable], Callable]: A decorator that wraps the event handler function.
+            Callable: The decorator function or the original handler if one was provided.
         """
 
         def decorator(func: Callable) -> Callable:
-            """
-            Decorator that wraps the original event handler.
+            async def wrapper(sid: str, *args: Any, **kwargs: Any) -> None:
+                context = LifespanContext()
+                cache: dict[Any, Any] = {}
 
-            Args:
-                func (Callable): The original handler function.
+                data = args[0] if args else None
+                environ = kwargs.get("environ", {})
 
-            Returns:
-                Callable: The wrapped handler or the original if no validation is required.
-            """
-            sig = signature(func)
-            params = list(sig.parameters.values())
+                cache["__sid__"] = sid
+                cache["__data__"] = data
+                cache["__environ__"] = environ
 
-            if len(params) < 2:
-                return super(AsyncServer, self).on(event=event, handler=handler, namespace=namespace)(func)
+                try:
+                    await solve_dependency(func, context, cache)
 
-            data_param = params[1]
-            annotations = get_type_hints(func)
-            model_cls = annotations.get(data_param.name)
+                except ValidationError as e:
+                    details = format_validation_errors(e)
+                    await self.emit(
+                        "error",
+                        SocketErrorResponse(
+                            code=status.WS_1007_INVALID_FRAME_PAYLOAD_DATA,
+                            event=event,
+                            message="Data Validation Error.",
+                            data=details,
+                        ),
+                        to=sid,
+                    )
 
-            if model_cls is not None and isclass(model_cls) and isinstance(model_cls, ModelMetaclass):
+                except TypeError:
+                    await self.emit(
+                        "error",
+                        SocketErrorResponse(
+                            code=status.WS_1003_UNSUPPORTED_DATA,
+                            event=event,
+                            message="Data Type Error.",
+                            data=f"TypeError: expected a 'map', but received an '{type(data).__name__}'.",
+                        ),
+                        to=sid,
+                    )
 
-                async def wrapper(sid: str, data: dict, *args: Any, **kwargs: Any) -> Any:
-                    """
-                    Wrapper function that validates incoming data using a Pydantic model.
+                finally:
+                    await context.run_teardowns()
 
-                    Args:
-                        sid (str): The session ID of the client.
-                        data (dict): The raw data received from the client.
-                        *args (Any): Additional positional arguments.
-                        **kwargs (Any): Additional keyword arguments.
-
-                    Returns:
-                        Any: The result of the original handler, or an error response if validation fails.
-                    """
-                    try:
-                        parsed_data = model_cls(**data)
-                        return await func(sid, parsed_data, *args, **kwargs)
-                    except ValidationError as e:
-                        "[{'type': 'missing', 'loc': ['name'], 'msg': 'Field required', 'input': {'name1': 'coke'}}]"
-                        details = format_validation_errors(e)
-                        await self.emit(
-                            "error",
-                            WSErrorResponse(
-                                code=status.WS_1007_INVALID_FRAME_PAYLOAD_DATA,
-                                event=event,
-                                message="Data Validation Error.",
-                                data=details,
-                            ),
-                            to=sid,
-                        )
-
-                    except TypeError:
-                        await self.emit(
-                            "error",
-                            WSErrorResponse(
-                                code=status.WS_1003_UNSUPPORTED_DATA,
-                                event=event,
-                                message="Data Type Error.",
-                                data=f"TypeError: expected a 'map', but received an '{type(data).__name__}'.",
-                            ),
-                            to=sid,
-                        )
-
-                return super(AsyncServer, self).on(event=event, handler=handler, namespace=namespace)(wrapper)
-
-            return super(AsyncServer, self).on(event=event, handler=handler, namespace=namespace)(func)
+            return super(AsyncServer, self).on(event=event, handler=handler, namespace=namespace)(wrapper)
 
         return decorator if handler is None else decorator(handler)
 
@@ -195,12 +171,77 @@ class AsyncServer(SocketIOAsyncServer):
             serializer=serializer,
         )
 
-    @overload
+    async def _trigger_event(self, event: str, namespace: str, *args: Any) -> Awaitable[None] | None:
+        """
+        Trigger an application-level event handler.
+
+        This method attempts to locate and invoke a registered event handler
+        (either a specific event handler or a namespace-level handler).
+        It supports both coroutine and regular function handlers.
+
+        Args:
+            event (str): The name of the event to trigger (e.g., "connect").
+            namespace (str): The namespace associated with the event.
+            *args (Any): Positional arguments to pass to the event handler.
+                For "connect" events, the expected order is (sid, environ, data).
+
+        Returns:
+            Awaitable[None] | None: The return value from the event handler,
+            or `self.not_handled` if no handler was found.
+        """
+        handler, args = self._get_event_handler(event, namespace, args)
+        if handler:
+            try:
+                if asyncio.iscoroutinefunction(handler):
+                    ret = await self._call_handler(handler, event, args)
+                else:
+                    ret = self._call_handler(handler, event, args)
+            except asyncio.CancelledError:
+                ret = None
+            return ret
+
+        handler, args = self._get_namespace_handler(namespace, args)
+        if handler:
+            return await handler.trigger_event(event, *args)
+
+        else:
+            return self.not_handled
+
     @staticmethod
+    def _call_handler(handler: Callable, event: str, args: tuple) -> Any:
+        """
+        Call the given event handler with appropriate arguments.
+
+        For "connect" events, this method injects the `environ` argument
+        as a keyword parameter, while preserving `sid` and `data` as positional arguments.
+        For "disconnect", it removes the last argument for backward compatibility.
+
+        Args:
+            handler (Callable): The function or coroutine to call.
+            event (str): The name of the event ("connect", "disconnect", etc.).
+            args (tuple): The arguments to pass to the handler.
+
+        Returns:
+            Any: The return value from the handler.
+        """
+        if event == "connect":
+            if len(args) == 3:
+                return handler(args[0], args[2], environ=args[1])
+            elif len(args) == 2:
+                return handler(args[0], environ=args[1])
+            else:
+                return handler(*args)
+        elif event == "disconnect":
+            return handler(*args[:-1])
+        else:
+            return handler(*args)
+
+    @staticmethod
+    @overload
     def _pydantic_model_to_dict(data: BaseModel, serializer: str = "serializable_dict") -> dict: ...
 
-    @overload
     @staticmethod
+    @overload
     def _pydantic_model_to_dict(data: T, serializer: str = "serializable_dict") -> T: ...
 
     @staticmethod
