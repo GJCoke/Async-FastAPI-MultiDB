@@ -6,7 +6,7 @@ Date    : 2025-05-20
 from typing import Callable
 
 
-class SID:
+class SID(str):
     """
     Marker class to indicate a 'sid' dependency.
 
@@ -20,7 +20,7 @@ class SID:
     """
 
 
-class Environ:
+class Environ(dict):
     """
     Marker class to indicate an 'environ' dependency.
 

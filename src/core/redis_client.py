@@ -7,7 +7,7 @@ Date   : 2025-05-13
 
 import logging
 from datetime import timedelta
-from typing import Any, overload
+from typing import Any, Set, overload
 
 from redis.asyncio import Redis
 from redis.typing import EncodableT, KeyT
@@ -15,6 +15,7 @@ from redis.typing import EncodableT, KeyT
 logger = logging.getLogger(__name__)
 
 
+# TODO: Support Pydantic and refactor.
 class AsyncRedisClient:
     """
     A client for interacting with a Redis database using asyncio.
@@ -96,7 +97,7 @@ class AsyncRedisClient:
     async def set(
         self,
         key: str,
-        value: EncodableT | dict | list,
+        value: EncodableT | dict | list | Set,
         *,
         ttl: int | timedelta | None = None,
         is_transaction: bool = False,
@@ -115,7 +116,7 @@ class AsyncRedisClient:
     async def set(
         self,
         key: KeyT,
-        value: EncodableT | dict | list,
+        value: EncodableT | dict | list | Set,
         *,
         ttl: int | timedelta | None = None,
         is_transaction: bool = False,
@@ -136,6 +137,9 @@ class AsyncRedisClient:
 
             elif isinstance(value, list):
                 await pipe.lpush(self._to_str(key), *value)  # type: ignore
+
+            elif isinstance(value, set):
+                await pipe.sadd(self._to_str(key), *value)  # type: ignore
 
             else:
                 await pipe.set(key, value)
@@ -199,6 +203,18 @@ class AsyncRedisClient:
         self._get_log(key, response)
         return response
 
+    async def get_sets(self, key: str) -> Set:
+        """
+        Get all Sets of a Redis set.
+
+        Args:
+            key (str): The key of the Redis set.
+
+        Returns:
+            set: A set containing all members of the Redis set.
+        """
+        return await self.client.smembers(key)  # type: ignore
+
     async def exists(self, *args: KeyT) -> int:
         """
         Checks if a key exists in Redis.
@@ -232,3 +248,16 @@ class AsyncRedisClient:
             self.logger.debug("Failed to delete key(s): %s. The key(s) may not exist.", args)
 
         return bool(response)
+
+    async def delete_set(self, key: str, *args: EncodableT) -> int:
+        """
+        Remove one or more elements from a Redis set.
+
+        Args:
+            key (str): The key of the Redis set.
+            *args (EncodableT): One or more elements to remove from the set.
+
+        Returns:
+            int: The number of elements that were removed from the set.
+        """
+        return await self.client.srem(key, *args)  # type: ignore

@@ -96,6 +96,7 @@ def decode_token(token: str, key: AccessSecret | RefreshSecret) -> UserAccessJWT
     """
     try:
         payload = jwt.decode(token, key=key.get_secret_value())
+        payload.validate()
     except JoseError:
         logger.exception("Invalid JWT token: %s", token)
         raise UnauthorizedException()

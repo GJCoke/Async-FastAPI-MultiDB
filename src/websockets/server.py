@@ -69,6 +69,7 @@ class AsyncServer(SocketIOAsyncServer):
                         ),
                         to=sid,
                     )
+                    raise
 
                 except TypeError:
                     await self.emit(
@@ -81,6 +82,7 @@ class AsyncServer(SocketIOAsyncServer):
                         ),
                         to=sid,
                     )
+                    raise
 
                 finally:
                     await context.run_teardowns()
