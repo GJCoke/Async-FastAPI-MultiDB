@@ -194,10 +194,9 @@ class AsyncServer(SocketIOAsyncServer):
         handler, args = self._get_event_handler(event, namespace, args)
         if handler:
             try:
-                if asyncio.iscoroutinefunction(handler):
-                    ret = await self._call_handler(handler, event, args)
-                else:
-                    ret = self._call_handler(handler, event, args)
+                ret = self._call_handler(handler, event, args)
+                if asyncio.iscoroutine(ret) or isinstance(ret, Awaitable):
+                    ret = await ret
             except asyncio.CancelledError:
                 ret = None
             return ret
