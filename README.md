@@ -16,6 +16,22 @@ Core technologies include FastAPI, Socket.IO, Celery, MinIO, SQLModel, Beanie, a
 
 ---
 
+## TODO
+
+- [ ] Refactor main function
+- [ ] Add more middleware
+- [ ] Refactor Celery code
+- [ ] Refactor SocketIO dependency injection code
+- [ ] Refactor utils functions
+- [ ] Add business status codes
+- [ ] Use `uv` as package manager
+- [ ] Use `ty` as type checking tool
+- [ ] Add `i18n` internationalization
+- [ ] Add rate limiting functionality
+- [ ] Refactor Logging module
+
+---
+
 ## Table of Contents
 
 - [Project Features](#features)
